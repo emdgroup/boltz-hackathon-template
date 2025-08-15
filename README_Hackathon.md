@@ -176,7 +176,7 @@ For each datapoint, the pipeline:
 - `BOLTZ_CACHE` - Cache directory for Boltz models (defaults to `~/.boltz`)
 
 ### Dependencies
-Add any additional Python packages to `requirements.txt` - they'll be installed automatically.
+Add any additional Python packages to `pyproject.toml` under the `[project.dependencies]` section.
 
 ## Submission Format 📦
 
