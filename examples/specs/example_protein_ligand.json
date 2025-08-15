@@ -5,11 +5,13 @@
     {
       "id": "A",
       "sequence": "MVTPEGNVSLVDESLLVGV",
-      "msa_path": "examples/msa/seq1.a3m"
+      "msa_path": "examples/msa/seq1.a3m",
+      "chain_id": "A"
     }
   ],
   "ligand": {
     "id": "B",
-    "smiles": "N[C@@H](Cc1ccc(O)cc1)C(=O)O"
+    "smiles": "N[C@@H](Cc1ccc(O)cc1)C(=O)O",
+    "chain_id": "Z"
   }
 }

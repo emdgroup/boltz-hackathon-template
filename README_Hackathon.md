@@ -57,6 +57,7 @@ def inputs_to_yaml(datapoint_id: str, proteins: Iterable[Protein],
                 "id": p.id,
                 "sequence": p.sequence,
                 "msa": p.msa_path,
+                "chain_id": p.chain_id,
                 # Add custom fields like structure templates, constraints, etc.
                 # "template": "path/to/template.pdb",
                 # "constraints": {"distance": [{"atom1": "A:1:CA", "atom2": "B:10:CA", "distance": 8.0}]}
@@ -69,6 +70,7 @@ def inputs_to_yaml(datapoint_id: str, proteins: Iterable[Protein],
             "ligand": {
                 "id": ligand.id,
                 "smiles": ligand.smiles,
+                "chain_id": ligand.chain_id,
                 # Add custom ligand properties
                 # "conformers": 10,
                 # "charge": 0
@@ -105,6 +107,12 @@ def predict_protein_complex(datapoint_id: str, proteins: List[Protein]) -> None:
 
 Each datapoint must include a `task_type` field with either `"protein_complex"` or `"protein_ligand"`:
 
+**Required Fields:**
+- `datapoint_id`: Unique identifier for the prediction
+- `task_type`: Either `"protein_complex"` or `"protein_ligand"`
+- `proteins`: List of protein objects with `id`, `sequence`, `msa_path`, and `chain_id`
+- `ligand` (for protein_ligand tasks): Ligand object with `id`, `smiles`, and `chain_id`
+
 ### Protein-Ligand Example
 ```json
 {
@@ -114,12 +122,14 @@ Each datapoint must include a `task_type` field with either `"protein_complex"` 
     {
       "id": "A",
       "sequence": "MVTPEGNVSLVDESLLVGV...",
-      "msa_path": "path/to/seq1.a3m"
+      "msa_path": "path/to/seq1.a3m",
+      "chain_id": "A"
     }
   ],
   "ligand": {
     "id": "ligand1", 
-    "smiles": "N[C@@H](Cc1ccc(O)cc1)C(=O)O"
+    "smiles": "N[C@@H](Cc1ccc(O)cc1)C(=O)O",
+    "chain_id": "Z"
   }
 }
 ```
@@ -133,12 +143,14 @@ Each datapoint must include a `task_type` field with either `"protein_complex"` 
     {
       "id": "A",
       "sequence": "MVTPEGNVSLVDESLLVGV...",
-      "msa_path": "path/to/seq1.a3m"
+      "msa_path": "path/to/seq1.a3m",
+      "chain_id": "A"
     },
     {
       "id": "B", 
       "sequence": "GKTPEGNVSLVDESLLVGV...",
-      "msa_path": "path/to/seq2.a3m"
+      "msa_path": "path/to/seq2.a3m",
+      "chain_id": "B"
     }
   ]
 }

@@ -62,7 +62,8 @@ def inputs_to_yaml(
             "protein": {
                 "id": p.id,
                 "sequence": p.sequence,
-                "msa": p.msa_path  # Always provided for hackathon
+                "msa": p.msa_path,  # Always provided for hackathon
+                "chain_id": p.chain_id
             }
         }
         seqs.append(entry)
@@ -71,7 +72,8 @@ def inputs_to_yaml(
         l = {
             "ligand": {
                 "id": ligand.id,
-                "smiles": ligand.smiles
+                "smiles": ligand.smiles,
+                "chain_id": ligand.chain_id
             }
         }
         seqs.append(l)
@@ -173,6 +175,7 @@ def _proteins_from_datapoint(items) -> List[Protein]:
             id=p["id"],
             sequence=p["sequence"],
             msa_path=p["msa_path"],  # Always provided for hackathon
+            chain_id=p["chain_id"]
         ))
     return proteins
 
@@ -187,7 +190,7 @@ def _process_single_datapoint(datapoint):
             raise ValueError(f"Datapoint {datapoint_id} has task_type='protein_ligand' but no ligand specified")
         
         lig = datapoint["ligand"]
-        ligand = SmallMolecule(id=lig["id"], smiles=lig["smiles"])
+        ligand = SmallMolecule(id=lig["id"], smiles=lig["smiles"], chain_id=lig["chain_id"])
         proteins = _proteins_from_datapoint(datapoint["proteins"])
         
         if len(proteins) != 1:
