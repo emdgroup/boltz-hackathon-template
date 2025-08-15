@@ -1,0 +1,16 @@
+{
+  "datapoint_id": "complex",
+  "task_type": "protein_complex",
+  "proteins": [
+    {
+      "id": "A",
+      "sequence": "MVTPEGNVSLVDESLLVGV",
+      "msa_path": "examples/msa/seq1.a3m"
+    },
+    {
+      "id": "B",
+      "sequence": "MVTPEGNVSLVDESLLVGK",
+      "msa_path": "examples/msa/seq2.a3m"
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+# Git
+.git
+.gitignore
+.github
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.idea
+.mypy_cache
+
+# Documentation
+*.md
+docs/
+
+# Development files
+.vscode/
+*.swp
+*.swo
+*~
+
+# Build artifacts (keep minimal)
+predictions/
+submission/
+inputs/
+.tmp_spec.json
+
+# Keep these for the container
+!requirements.txt
+!examples/
+!src/
+!scripts/

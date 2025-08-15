@@ -1,0 +1,6 @@
+# Add any additional Python dependencies here
+# These will be installed in the Docker container and during CI
+# 
+# Example:
+# numpy>=1.21.0
+# pandas>=1.3.0
