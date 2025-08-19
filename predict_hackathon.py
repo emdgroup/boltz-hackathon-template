@@ -29,7 +29,7 @@ def get_custom_args(datapoint_id: str) -> List[str]:
         List of additional command line arguments for boltz predict
     """
     # NOTE: --diffusion_samples controls #models; --output_format selects pdb vs mmcif
-    return ["--diffusion_samples", "5"]
+    return ["--diffusion_samples", "5", "--use_msa_server"]
 
 def inputs_to_yaml(
     datapoint_id: str,
@@ -144,10 +144,7 @@ def _run_boltz_and_collect(datapoint_id: str, input_yaml: Path) -> None:
     subprocess.run(cmd, check=True)
 
     # Find model files
-    pred_root = out_dir / "predictions" / datapoint_id
-    if not pred_root.exists():
-        # Some versions put files one level up; try fallback pattern
-        pred_root = out_dir / "predictions"
+    pred_root = out_dir / f"boltz_results_{datapoint_id}" / "predictions" / datapoint_id
     pdbs = sorted(pred_root.glob(f"{datapoint_id}_model_*.pdb"))
     # If none found (e.g., mmCIF), try cif (we won't rename to .pdb)
     if not pdbs:

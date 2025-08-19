@@ -54,14 +54,16 @@ fi
 # set -x
 docker run --rm \
     --gpus ${CUDA_VISIBLE_DEVICES:+device=$CUDA_VISIBLE_DEVICES} ${CUDA_VISIBLE_DEVICES:-all} \
-	--mount type=bind,source=$HOME/.ssh/cacert.pem,target=/etc/ssl/certs/cacert.pem,readonly \
-	-e REQUESTS_CA_BUNDLE=/etc/ssl/certs/cacert.pem \
-	-e CURL_CA_BUNDLE=/etc/ssl/certs/cacert.pem \
-	-e SSL_CERT_FILE=/etc/ssl/certs/cacert.pem \
-	-e BOLTZ_CACHE=/db/boltz \
+    --mount type=bind,source=$HOME/.ssh/cacert.pem,target=/etc/ssl/certs/cacert.pem,readonly \
+    -e REQUESTS_CA_BUNDLE=/etc/ssl/certs/cacert.pem \
+    -e CURL_CA_BUNDLE=/etc/ssl/certs/cacert.pem \
+    -e SSL_CERT_FILE=/etc/ssl/certs/cacert.pem \
+    -e BOLTZ_CACHE=/db/boltz \
+    -v "${DATASET_PATH}:/app/dataset.jsonl:ro" \
     -v "${SUBMISSION_DIR}:/app/submissions:rw" \
     -v "${MSA_DIR}:/app/msa:ro" \
     -v "${BOLTZ_CACHE_DIR}:/db/boltz:rw" \
+    -v "./preds_test:/app/predictions:rw" \
     -it \
     "${DOCKER_IMAGE_TAG}" \
-    conda run -n boltz python predict_hackathon.py --input-jsonl "${DATASET_PATH}"
+    conda run -n boltz python predict_hackathon.py --input-jsonl "/app/dataset.jsonl"
