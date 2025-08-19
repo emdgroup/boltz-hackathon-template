@@ -159,6 +159,8 @@ def _run_boltz_and_collect(datapoint_id: str, input_yaml: Path) -> None:
         shutil.copy2(p, target)
         print(f"Saved: {target}")
 
+    subprocess.run(["chmod", "-R", "777", str(subdir)], capture_output=True, text=True)
+
 def _load_datapoint(path: Path):
     """Load JSON datapoint file."""
     with open(path) as f:

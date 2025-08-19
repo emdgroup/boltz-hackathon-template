@@ -60,10 +60,9 @@ docker run --rm \
     -e SSL_CERT_FILE=/etc/ssl/certs/cacert.pem \
     -e BOLTZ_CACHE=/db/boltz \
     -v "${DATASET_PATH}:/app/dataset.jsonl:ro" \
-    -v "${SUBMISSION_DIR}:/app/submissions:rw" \
+    -v "${SUBMISSION_DIR}:/app/submission:rw" \
     -v "${MSA_DIR}:/app/msa:ro" \
     -v "${BOLTZ_CACHE_DIR}:/db/boltz:rw" \
-    -v "./preds_test:/app/predictions:rw" \
     -it \
     "${DOCKER_IMAGE_TAG}" \
     conda run -n boltz python predict_hackathon.py --input-jsonl "/app/dataset.jsonl"
