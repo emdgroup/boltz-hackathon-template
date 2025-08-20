@@ -36,6 +36,7 @@ def inputs_to_yaml(
     proteins: Iterable[Protein],
     ligand: Optional[SmallMolecule] = None,
     out_dir: Path = Path("inputs"),
+    msa_dir: Optional[Path] = None,
 ) -> Path:
     """
     Writes inputs/{datapoint_id}.yaml for Boltz.
@@ -49,6 +50,7 @@ def inputs_to_yaml(
         proteins: List of protein sequences
         ligand: Optional small molecule/ligand
         out_dir: Directory to write YAML files (default: "inputs")
+        msa_dir: Directory containing MSA files (used to compute relative paths)
     
     Returns:
         Path to the created YAML file
@@ -58,11 +60,28 @@ def inputs_to_yaml(
 
     seqs = []
     for p in proteins:
+        # Compute relative path from YAML file to MSA file
+        if msa_dir and p.msa_path:
+            # If msa_path is just a filename, construct the full path
+            if Path(p.msa_path).is_absolute():
+                msa_full_path = Path(p.msa_path)
+            else:
+                msa_full_path = msa_dir / p.msa_path
+            
+            # Compute relative path from YAML location to MSA file
+            try:
+                msa_relative_path = os.path.relpath(msa_full_path, ypath.parent)
+            except ValueError:
+                # Fallback if paths are on different drives (Windows)
+                msa_relative_path = str(msa_full_path)
+        else:
+            msa_relative_path = p.msa_path
+        
         entry = {
             "protein": {
                 "id": p.id,
                 "sequence": p.sequence,
-                "msa": p.msa_path,  # Always provided for hackathon
+                "msa": msa_relative_path,  # Use relative path
                 "chain_id": p.chain_id
             }
         }
@@ -88,7 +107,7 @@ def inputs_to_yaml(
     
     return ypath
 
-def predict_protein_complex(datapoint_id: str, proteins: List[Protein]) -> None:
+def predict_protein_complex(datapoint_id: str, proteins: List[Protein], msa_dir: Optional[Path] = None) -> None:
     """
     Predict structure for a protein complex.
     Baseline: write YAML, run boltz, copy the top-k models into submission/.
@@ -98,11 +117,13 @@ def predict_protein_complex(datapoint_id: str, proteins: List[Protein]) -> None:
     Args:
         datapoint_id: The unique identifier for this datapoint
         proteins: List of protein sequences to predict as a complex
+        msa_dir: Directory containing MSA files (for computing relative paths)
     """
-    yaml_path = inputs_to_yaml(datapoint_id, proteins=proteins, ligand=None, out_dir=DEFAULT_INPUTS_DIR)
+    yaml_path = inputs_to_yaml(datapoint_id, proteins=proteins, ligand=None, 
+                              out_dir=DEFAULT_INPUTS_DIR, msa_dir=msa_dir)
     _run_boltz_and_collect(datapoint_id, yaml_path)
 
-def predict_protein_ligand(datapoint_id: str, protein: Protein, ligand: SmallMolecule) -> None:
+def predict_protein_ligand(datapoint_id: str, protein: Protein, ligand: SmallMolecule, msa_dir: Optional[Path] = None) -> None:
     """
     Predict structure for a protein-ligand complex.
     Baseline: write YAML, run boltz, copy the top-k models into submission/.
@@ -113,8 +134,10 @@ def predict_protein_ligand(datapoint_id: str, protein: Protein, ligand: SmallMol
         datapoint_id: The unique identifier for this datapoint
         protein: The protein sequence
         ligand: The small molecule/ligand
+        msa_dir: Directory containing MSA files (for computing relative paths)
     """
-    yaml_path = inputs_to_yaml(datapoint_id, proteins=[protein], ligand=ligand, out_dir=DEFAULT_INPUTS_DIR)
+    yaml_path = inputs_to_yaml(datapoint_id, proteins=[protein], ligand=ligand, 
+                              out_dir=DEFAULT_INPUTS_DIR, msa_dir=msa_dir)
     _run_boltz_and_collect(datapoint_id, yaml_path)
 
 # ---- End of participant section ---------------------------------------------
@@ -178,7 +201,7 @@ def _proteins_from_datapoint(items) -> List[Protein]:
         ))
     return proteins
 
-def _process_single_datapoint(datapoint):
+def _process_single_datapoint(datapoint, msa_dir: Optional[Path] = None):
     """Process a single datapoint specification."""
     datapoint_id = datapoint["datapoint_id"]
     task_type = datapoint.get("task_type")
@@ -196,7 +219,7 @@ def _process_single_datapoint(datapoint):
             raise ValueError(f"Datapoint {datapoint_id}: protein_ligand task expects exactly one protein")
         
         print(f"Processing protein-ligand datapoint: {datapoint_id}")
-        predict_protein_ligand(datapoint_id, proteins[0], ligand)
+        predict_protein_ligand(datapoint_id, proteins[0], ligand, msa_dir)
         
     elif task_type == "protein_complex":
         proteins = _proteins_from_datapoint(datapoint["proteins"])
@@ -205,12 +228,12 @@ def _process_single_datapoint(datapoint):
             raise ValueError(f"Datapoint {datapoint_id}: protein_complex task expects at least two proteins")
         
         print(f"Processing protein complex datapoint: {datapoint_id}")
-        predict_protein_complex(datapoint_id, proteins)
+        predict_protein_complex(datapoint_id, proteins, msa_dir)
         
     else:
         raise ValueError(f"Datapoint {datapoint_id}: unknown task_type '{task_type}'. Expected 'protein_complex' or 'protein_ligand'")
 
-def _process_jsonl(jsonl_path: str):
+def _process_jsonl(jsonl_path: str, msa_dir: Optional[Path] = None):
     """Process multiple datapoints from a JSONL file."""
     print(f"Processing JSONL file: {jsonl_path}")
     
@@ -222,7 +245,7 @@ def _process_jsonl(jsonl_path: str):
         
         try:
             datapoint = json.loads(line)
-            _process_single_datapoint(datapoint)
+            _process_single_datapoint(datapoint, msa_dir)
             
         except json.JSONDecodeError as e:
             print(f"ERROR: Invalid JSON on line {line_num}: {e}")
@@ -231,13 +254,13 @@ def _process_jsonl(jsonl_path: str):
             print(f"ERROR: Failed to process datapoint on line {line_num}: {e}")
             continue
 
-def _process_json(json_path: str):
+def _process_json(json_path: str, msa_dir: Optional[Path] = None):
     """Process a single datapoint from a JSON file."""
     print(f"Processing JSON file: {json_path}")
     
     try:
         datapoint = _load_datapoint(Path(json_path))
-        _process_single_datapoint(datapoint)
+        _process_single_datapoint(datapoint, msa_dir)
     except Exception as e:
         print(f"ERROR: Failed to process datapoint: {e}")
         raise
@@ -247,8 +270,8 @@ def main():
     ap = argparse.ArgumentParser(
         description="Hackathon scaffold for Boltz predictions",
         epilog="Examples:\n"
-               "  Single datapoint: python predict_hackathon.py --input-json examples/specs/example_protein_ligand.json\n"
-               "  Multiple datapoints: python predict_hackathon.py --input-jsonl examples/test_dataset.jsonl",
+               "  Single datapoint: python predict_hackathon.py --input-json examples/specs/example_protein_ligand.json --msa-dir ./msa\n"
+               "  Multiple datapoints: python predict_hackathon.py --input-jsonl examples/test_dataset.jsonl --msa-dir ./msa",
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     
@@ -258,12 +281,15 @@ def main():
     input_group.add_argument("--input-jsonl", type=str,
                             help="Path to JSONL file with multiple datapoint definitions")
     
+    ap.add_argument("--msa-dir", type=Path,
+                    help="Directory containing MSA files (for computing relative paths in YAML)")
+    
     args = ap.parse_args()
     
     if args.input_json:
-        _process_json(args.input_json)
+        _process_json(args.input_json, args.msa_dir)
     elif args.input_jsonl:
-        _process_jsonl(args.input_jsonl)
+        _process_jsonl(args.input_jsonl, args.msa_dir)
 
 if __name__ == "__main__":
     main()

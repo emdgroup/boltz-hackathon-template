@@ -65,4 +65,4 @@ docker run --rm \
     -v "${BOLTZ_CACHE_DIR}:/db/boltz:rw" \
     -it \
     "${DOCKER_IMAGE_TAG}" \
-    conda run -n boltz python predict_hackathon.py --input-jsonl "/app/dataset.jsonl"
+    conda run -n boltz python predict_hackathon.py --input-jsonl "/app/dataset.jsonl" --msa-dir "/app/msa"

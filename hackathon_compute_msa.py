@@ -167,7 +167,7 @@ def update_jsonl_with_msa_paths(
     msa_paths: Dict[str, str],
     output_jsonl: Path,
 ) -> None:
-    """Update JSONL data with new MSA paths and write to output file."""
+    """Update JSONL data with new MSA paths (filenames only) and write to output file."""
     
     updated_entries = []
     
@@ -182,13 +182,15 @@ def update_jsonl_with_msa_paths(
                     # Multiple MSA files for multiple proteins
                     for i, protein in enumerate(entry["proteins"]):
                         if i < len(msa_path_data):
-                            protein["msa_path"] = msa_path_data[i]
+                            # Store only the filename, not the full path
+                            protein["msa_path"] = Path(msa_path_data[i]).name
                         else:
                             print(f"Warning: No MSA file for protein {i} in entry {entry.get('datapoint_id', 'unknown')}")
                 else:
                     # Single MSA file - assign to all proteins (for concatenated sequences)
                     for protein in entry["proteins"]:
-                        protein["msa_path"] = msa_path_data
+                        # Store only the filename, not the full path
+                        protein["msa_path"] = Path(msa_path_data).name
         else:
             print(f"Warning: No MSA found for entry {entry.get('datapoint_id', 'unknown')}")
         
