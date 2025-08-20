@@ -13,5 +13,8 @@
     "id": "B",
     "smiles": "N[C@@H](Cc1ccc(O)cc1)C(=O)O",
     "chain_id": "Z"
+  },
+  "ground_truth": {
+    "structure": "examples/ground_truth/affinity.pdb"
   }
 }

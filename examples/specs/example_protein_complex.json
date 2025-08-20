@@ -14,5 +14,8 @@
       "msa_path": "examples/msa/seq2.a3m",
       "chain_id": "B"
     }
-  ]
+  ],
+  "ground_truth": {
+    "structure": "examples/ground_truth/complex.pdb"
+  }
 }
