@@ -17,7 +17,7 @@ from typing import Any, Dict, List, Optional
 import hashlib
 import shutil
 
-from scripts.generate_local_msa import LocalColabFoldConfig, run_colabfold_search, A3MProcessor
+from ..generate_local_msa import LocalColabFoldConfig, run_colabfold_search, A3MProcessor
 
 
 def create_fasta_from_sequences(sequences: List[str], seq_ids: List[str], output_path: Path) -> str:
