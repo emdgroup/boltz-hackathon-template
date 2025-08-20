@@ -82,8 +82,7 @@ def inputs_to_yaml(
             "protein": {
                 "id": p.id,
                 "sequence": p.sequence,
-                "msa": msa_relative_path,  # Use relative path
-                "chain_id": p.chain_id
+                "msa": msa_relative_path  # Use relative path
             }
         }
         seqs.append(entry)
@@ -92,8 +91,7 @@ def inputs_to_yaml(
         l = {
             "ligand": {
                 "id": ligand.id,
-                "smiles": ligand.smiles,
-                "chain_id": ligand.chain_id
+                "smiles": ligand.smiles
             }
         }
         seqs.append(l)
@@ -197,8 +195,7 @@ def _proteins_from_datapoint(items) -> List[Protein]:
         proteins.append(Protein(
             id=p["id"],
             sequence=p["sequence"],
-            msa_path=p["msa_path"],  # Always provided for hackathon
-            chain_id=p["chain_id"]
+            msa_path=p["msa_path"]
         ))
     return proteins
 
@@ -211,26 +208,26 @@ def _process_single_datapoint(datapoint, msa_dir: Optional[Path] = None):
     if task_type == "protein_ligand":
         if "ligand" not in datapoint or datapoint["ligand"] is None:
             raise ValueError(f"Datapoint {datapoint_id} has task_type='protein_ligand' but no ligand specified")
-        
+
         lig = datapoint["ligand"]
-        ligand = SmallMolecule(id=lig["id"], smiles=lig["smiles"], chain_id=lig["chain_id"])
+        ligand = SmallMolecule(id=lig["id"], smiles=lig["smiles"])
         proteins = _proteins_from_datapoint(datapoint["proteins"])
-        
+
         if len(proteins) != 1:
             raise ValueError(f"Datapoint {datapoint_id}: protein_ligand task expects exactly one protein")
-        
+
         print(f"Processing protein-ligand datapoint: {datapoint_id}")
         predict_protein_ligand(datapoint_id, proteins[0], ligand, msa_dir)
-        
+
     elif task_type == "protein_complex":
         proteins = _proteins_from_datapoint(datapoint["proteins"])
-        
+
         if len(proteins) < 2:
             raise ValueError(f"Datapoint {datapoint_id}: protein_complex task expects at least two proteins")
-        
+
         print(f"Processing protein complex datapoint: {datapoint_id}")
         predict_protein_complex(datapoint_id, proteins, msa_dir)
-        
+
     else:
         raise ValueError(f"Datapoint {datapoint_id}: unknown task_type '{task_type}'. Expected 'protein_complex' or 'protein_ligand'")
 

@@ -5,14 +5,12 @@
     {
       "id": "A",
       "sequence": "MVTPEGNVSLVDESLLVGV",
-      "msa_path": "examples/msa/seq1.a3m",
-      "chain_id": "A"
+      "msa_path": "examples/msa/seq1.a3m"
     },
     {
       "id": "B",
       "sequence": "MVTPEGNVSLVDESLLVGK",
-      "msa_path": "examples/msa/seq2.a3m",
-      "chain_id": "B"
+      "msa_path": "examples/msa/seq2.a3m"
     }
   ],
   "ground_truth": {
