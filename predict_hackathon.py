@@ -29,7 +29,7 @@ def get_custom_args(datapoint_id: str) -> List[str]:
         List of additional command line arguments for boltz predict
     """
     # NOTE: --diffusion_samples controls #models; --output_format selects pdb vs mmcif
-    return ["--diffusion_samples", "5", "--use_msa_server"]
+    return ["--diffusion_samples", "5"]
 
 def inputs_to_yaml(
     datapoint_id: str,
@@ -70,7 +70,8 @@ def inputs_to_yaml(
             
             # Compute relative path from YAML location to MSA file
             try:
-                msa_relative_path = os.path.relpath(msa_full_path, ypath.parent)
+                # msa_relative_path = os.path.relpath(msa_full_path, ypath.parent)
+                msa_relative_path = os.path.relpath(msa_full_path, Path.cwd())
             except ValueError:
                 # Fallback if paths are on different drives (Windows)
                 msa_relative_path = str(msa_full_path)
