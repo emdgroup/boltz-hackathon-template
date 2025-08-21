@@ -85,6 +85,9 @@ def inputs_to_yaml(
                 "msa": msa_relative_path  # Use relative path
             }
         }
+        # Add modifications if present
+        if getattr(p, "modifications", None) is not None:
+            entry["protein"]["modifications"] = p.modifications
         seqs.append(entry)
 
     if ligand:

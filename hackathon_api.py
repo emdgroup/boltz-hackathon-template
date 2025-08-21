@@ -1,5 +1,6 @@
 # hackathon_api.py
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Optional, Any
 
 @dataclass
 class Protein:
@@ -9,6 +10,7 @@ class Protein:
     id: str
     sequence: str
     msa_path: str                      # A3M path (always provided for hackathon)
+    modifications: Optional[Any] = field(default=None)
 
 @dataclass
 class SmallMolecule:
