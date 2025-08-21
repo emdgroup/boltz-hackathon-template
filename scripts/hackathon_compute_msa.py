@@ -17,7 +17,7 @@ from typing import Any, Dict, List, Optional
 import hashlib
 import shutil
 
-from ..generate_local_msa import LocalColabFoldConfig, run_colabfold_search, A3MProcessor
+from generate_local_msa import LocalColabFoldConfig, run_colabfold_search, A3MProcessor
 
 
 def create_fasta_from_sequences(sequences: List[str], seq_ids: List[str], output_path: Path) -> str:
@@ -183,14 +183,14 @@ def update_jsonl_with_msa_paths(
                     for i, protein in enumerate(entry["proteins"]):
                         if i < len(msa_path_data):
                             # Store only the filename, not the full path
-                            protein["msa_path"] = Path(msa_path_data[i]).name
+                            protein["msa"] = Path(msa_path_data[i]).name
                         else:
                             print(f"Warning: No MSA file for protein {i} in entry {entry.get('datapoint_id', 'unknown')}")
                 else:
                     # Single MSA file - assign to all proteins (for concatenated sequences)
                     for protein in entry["proteins"]:
                         # Store only the filename, not the full path
-                        protein["msa_path"] = Path(msa_path_data).name
+                        protein["msa"] = Path(msa_path_data).name
         else:
             print(f"Warning: No MSA found for entry {entry.get('datapoint_id', 'unknown')}")
         

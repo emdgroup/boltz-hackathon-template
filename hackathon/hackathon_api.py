@@ -7,7 +7,7 @@ from dataclasses_json import dataclass_json
 
 
 # Enum for task_type
-class TaskType(Enum):
+class TaskType(str, Enum):
     """Enum for valid hackathon task types."""
 
     PROTEIN_COMPLEX = "protein_complex"

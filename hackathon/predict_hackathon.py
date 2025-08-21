@@ -86,7 +86,7 @@ def inputs_to_yaml(
         }
         # Add modifications if present and not None
         if getattr(p, "modifications", None) is not None:
-            entry["protein"]["modifications"] = str(p.modifications)
+            entry["protein"]["modifications"] = p.modifications
         seqs.append(entry)
 
     if ligand:
@@ -161,6 +161,7 @@ def _run_boltz_and_collect(datapoint_id: str, input_yaml: Path) -> None:
         "--devices", "1",
         "--out_dir", str(out_dir),
         "--cache", cache,
+        "--no_kernels",
         "--output_format", "pdb",          # We want PDB files for submissions
     ]
     cmd = fixed + get_custom_args(datapoint_id)
@@ -188,7 +189,7 @@ def _run_boltz_and_collect(datapoint_id: str, input_yaml: Path) -> None:
 def _load_datapoint(path: Path):
     """Load JSON datapoint file."""
     with open(path) as f:
-        return json.load(f)
+        return Datapoint.from_json(f.read())
 
 def _process_single_datapoint(datapoint: Datapoint, msa_dir: Optional[Path] = None):
     """Process a single datapoint specification."""
@@ -232,7 +233,7 @@ def _process_jsonl(jsonl_path: str, msa_dir: Optional[Path] = None):
         print(f"\n--- Processing line {line_num} ---")
 
         try:
-            datapoint = Datapoint(**json.loads(line))
+            datapoint = Datapoint.from_json(line)
             _process_single_datapoint(datapoint, msa_dir)
 
         except json.JSONDecodeError as e:
@@ -240,6 +241,7 @@ def _process_jsonl(jsonl_path: str, msa_dir: Optional[Path] = None):
             continue
         except Exception as e:
             print(f"ERROR: Failed to process datapoint on line {line_num}: {e}")
+            raise e
             continue
 
 def _process_json(json_path: str, msa_dir: Optional[Path] = None):
