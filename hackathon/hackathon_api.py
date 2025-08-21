@@ -21,7 +21,7 @@ class Protein:
 
     id: str
     sequence: str
-    msa_path: str  # A3M path (always provided for hackathon)
+    msa: str  # A3M path (always provided for hackathon)
     modifications: Optional[Any] = field(default=None)
 
 

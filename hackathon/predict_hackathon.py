@@ -9,6 +9,7 @@ import yaml
 from pathlib import Path
 from typing import Iterable, List, Optional
 
+from hackathon_api import Datapoint
 from hackathon_api import Protein, SmallMolecule
 
 DEFAULT_OUT_DIR = Path("predictions")
@@ -61,22 +62,20 @@ def inputs_to_yaml(
     seqs = []
     for p in proteins:
         # Compute relative path from YAML file to MSA file
-        if msa_dir and p.msa_path:
-            # If msa_path is just a filename, construct the full path
-            if Path(p.msa_path).is_absolute():
-                msa_full_path = Path(p.msa_path)
+        if msa_dir and p.msa:
+            # If msa is just a filename, construct the full path
+            if Path(p.msa).is_absolute():
+                msa_full_path = Path(p.msa)
             else:
-                msa_full_path = msa_dir / p.msa_path
+                msa_full_path = msa_dir / p.msa
             
             # Compute relative path from YAML location to MSA file
             try:
-                # msa_relative_path = os.path.relpath(msa_full_path, ypath.parent)
                 msa_relative_path = os.path.relpath(msa_full_path, Path.cwd())
             except ValueError:
-                # Fallback if paths are on different drives (Windows)
                 msa_relative_path = str(msa_full_path)
         else:
-            msa_relative_path = p.msa_path
+            msa_relative_path = p.msa
         
         entry = {
             "protein": {
@@ -85,9 +84,9 @@ def inputs_to_yaml(
                 "msa": msa_relative_path  # Use relative path
             }
         }
-        # Add modifications if present
+        # Add modifications if present and not None
         if getattr(p, "modifications", None) is not None:
-            entry["protein"]["modifications"] = p.modifications
+            entry["protein"]["modifications"] = str(p.modifications)
         seqs.append(entry)
 
     if ligand:
@@ -191,30 +190,18 @@ def _load_datapoint(path: Path):
     with open(path) as f:
         return json.load(f)
 
-def _proteins_from_datapoint(items) -> List[Protein]:
-    """Convert JSON protein datapoints to Protein objects."""
-    proteins = []
-    for p in items:
-        proteins.append(Protein(
-            id=p["id"],
-            sequence=p["sequence"],
-            msa_path=p["msa_path"]
-        ))
-    return proteins
-
-def _process_single_datapoint(datapoint, msa_dir: Optional[Path] = None):
+def _process_single_datapoint(datapoint: Datapoint, msa_dir: Optional[Path] = None):
     """Process a single datapoint specification."""
-    datapoint_id = datapoint["datapoint_id"]
-    task_type = datapoint.get("task_type")
+    datapoint_id = datapoint.datapoint_id
+    task_type = datapoint.task_type
     
     # Route based on task_type field
     if task_type == "protein_ligand":
-        if "ligand" not in datapoint or datapoint["ligand"] is None:
+        if not datapoint.ligand:
             raise ValueError(f"Datapoint {datapoint_id} has task_type='protein_ligand' but no ligand specified")
 
-        lig = datapoint["ligand"]
-        ligand = SmallMolecule(id=lig["id"], smiles=lig["smiles"])
-        proteins = _proteins_from_datapoint(datapoint["proteins"])
+        ligand = datapoint.ligand
+        proteins = datapoint.proteins
 
         if len(proteins) != 1:
             raise ValueError(f"Datapoint {datapoint_id}: protein_ligand task expects exactly one protein")
@@ -223,7 +210,7 @@ def _process_single_datapoint(datapoint, msa_dir: Optional[Path] = None):
         predict_protein_ligand(datapoint_id, proteins[0], ligand, msa_dir)
 
     elif task_type == "protein_complex":
-        proteins = _proteins_from_datapoint(datapoint["proteins"])
+        proteins = datapoint.proteins
 
         if len(proteins) < 2:
             raise ValueError(f"Datapoint {datapoint_id}: protein_complex task expects at least two proteins")
@@ -241,13 +228,13 @@ def _process_jsonl(jsonl_path: str, msa_dir: Optional[Path] = None):
     for line_num, line in enumerate(Path(jsonl_path).read_text().splitlines(), 1):
         if not line.strip():
             continue
-            
+
         print(f"\n--- Processing line {line_num} ---")
-        
+
         try:
-            datapoint = json.loads(line)
+            datapoint = Datapoint(**json.loads(line))
             _process_single_datapoint(datapoint, msa_dir)
-            
+
         except json.JSONDecodeError as e:
             print(f"ERROR: Invalid JSON on line {line_num}: {e}")
             continue
