@@ -26,6 +26,23 @@ def prepare_protein_complex(datapoint_id: str, proteins: List[Protein], input_di
     Returns:
         Tuple of (final input dict, list of CLI args)
     """
+    # Please note:
+    # `proteins`` will contain 3 chains
+    # H,L: heavy and light chain of the Fab region
+    # A: the antigen
+    #
+    # you can modify input_dict to change the input yaml file going into the prediction, e.g.
+    # ```
+    # input_dict["constraints"] = [{
+    #   "contact": {
+    #       "token1" : [CHAIN_ID, RES_IDX/ATOM_NAME], 
+    #       "token1" : [CHAIN_ID, RES_IDX/ATOM_NAME]
+    #   }
+    # }]
+    # ```
+    #
+    # will add contact constraints to the input_dict
+
     # Default: add 5 models
     cli_args = ["--diffusion_samples", "5"]
     return input_dict, cli_args
@@ -42,15 +59,33 @@ def prepare_protein_ligand(datapoint_id: str, protein: Protein, ligand: SmallMol
     Returns:
         Tuple of (final input dict, list of CLI args)
     """
+    # Please note:
+    # `protein` is a single-chain target protein sequence with id T
+    # `ligand` is a small molecule/ligand with id L and unknown binding site
+    #
+    # you can modify input_dict to change the input yaml file going into the prediction, e.g.
+    # ```
+    # input_dict["constraints"] = [{
+    #   "contact": {
+    #       "token1" : [CHAIN_ID, RES_IDX/ATOM_NAME], 
+    #       "token1" : [CHAIN_ID, RES_IDX/ATOM_NAME]
+    #   }
+    # }]
+    # ```
+    #
+    # will add contact constraints to the input_dict
+
+
     cli_args = ["--diffusion_samples", "5"]
     return input_dict, cli_args
 
-def post_process_protein_complex(datapoint: Datapoint, input_dict: dict[str, Any], prediction_dir: Path) -> List[str]:
+def post_process_protein_complex(datapoint: Datapoint, input_dict: dict[str, Any], cli_args: list[str], prediction_dir: Path) -> List[str]:
     """
     Return ranked model files for protein complex submission.
     Args:
         datapoint: The original datapoint object
         input_dict: The input dictionary used for prediction
+        cli_args: The command line arguments used for prediction
         prediction_dir: The directory containing prediction results
     Returns: 
         Sorted pdb file names that should be used as your submission.
@@ -62,12 +97,13 @@ def post_process_protein_complex(datapoint: Datapoint, input_dict: dict[str, Any
         pdbs = sorted(pred_root.glob(f"{datapoint_id}_model_*.cif"))
     return [p.name for p in pdbs]
 
-def post_process_protein_ligand(datapoint: Datapoint, input_dict: dict[str, Any], prediction_dir: Path) -> List[str]:
+def post_process_protein_ligand(datapoint: Datapoint, input_dict: dict[str, Any], cli_args: list[str], prediction_dir: Path) -> List[str]:
     """
     Return ranked model files for protein-ligand submission.
     Args:
         datapoint: The original datapoint object
         input_dict: The input dictionary used for prediction
+        cli_args: The command line arguments used for prediction
         prediction_dir: The directory containing prediction results
     Returns: 
         Sorted pdb file names that should be used as your submission.
@@ -199,9 +235,9 @@ def _run_boltz_and_collect(datapoint) -> None:
 
     # Post-process and copy submissions
     if datapoint.task_type == "protein_complex":
-        ranked_files = post_process_protein_complex(datapoint, input_dict, pred_subfolder)
+        ranked_files = post_process_protein_complex(datapoint, input_dict, cli_args, pred_subfolder)
     elif datapoint.task_type == "protein_ligand":
-        ranked_files = post_process_protein_ligand(datapoint, input_dict, pred_subfolder)
+        ranked_files = post_process_protein_ligand(datapoint, input_dict, cli_args, pred_subfolder)
     else:
         raise ValueError(f"Unknown task_type: {datapoint.task_type}")
 
