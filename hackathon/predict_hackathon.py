@@ -43,7 +43,7 @@ def prepare_protein_complex(datapoint_id: str, proteins: List[Protein], input_di
     #
     # will add contact constraints to the input_dict
 
-    # Default: add 5 models
+    # Example: predict 5 structures
     cli_args = ["--diffusion_samples", "5"]
     return input_dict, cli_args
 
@@ -75,7 +75,7 @@ def prepare_protein_ligand(datapoint_id: str, protein: Protein, ligand: SmallMol
     #
     # will add contact constraints to the input_dict
 
-
+    # Example: predict 5 structures
     cli_args = ["--diffusion_samples", "5"]
     return input_dict, cli_args
 
