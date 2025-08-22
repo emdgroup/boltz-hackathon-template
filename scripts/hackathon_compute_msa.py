@@ -37,17 +37,7 @@ def create_fasta_from_sequences(sequences: List[str], seq_ids: List[str], output
 
 def get_entry_hash(entry: Dict[str, Any]) -> str:
     """Generate a hash for a JSONL entry based on its protein sequences."""
-    # Create a consistent string representation of the entry's protein sequences
-    sequences = []
-    if "proteins" in entry:
-        for protein in entry["proteins"]:
-            if "sequence" in protein:
-                sequences.append(protein["sequence"])
-    
-    # Sort sequences to ensure consistent hashing regardless of order
-    sequences.sort()
-    combined_sequences = ":".join(sequences)
-    return hashlib.md5(combined_sequences.encode()).hexdigest()[:12]
+    return entry["datapoint_id"]
 
 
 def extract_entry_sequences(jsonl_data: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
