@@ -90,11 +90,7 @@ def post_process_protein_complex(datapoint: Datapoint, input_dict: dict[str, Any
     Returns: 
         Sorted pdb file names that should be used as your submission.
     """
-    datapoint_id = datapoint.datapoint_id
-    pred_root = Path(prediction_dir)
-    pdbs = sorted(pred_root.glob(f"{datapoint_id}_model_*.pdb"))
-    if not pdbs:
-        pdbs = sorted(pred_root.glob(f"{datapoint_id}_model_*.cif"))
+    pdbs = sorted(prediction_dir.glob(f"{datapoint.datapoint_id}_model_*.pdb"))
     return [p.name for p in pdbs]
 
 def post_process_protein_ligand(datapoint: Datapoint, input_dict: dict[str, Any], cli_args: list[str], prediction_dir: Path) -> List[str]:
@@ -108,11 +104,7 @@ def post_process_protein_ligand(datapoint: Datapoint, input_dict: dict[str, Any]
     Returns: 
         Sorted pdb file names that should be used as your submission.
     """
-    datapoint_id = datapoint.datapoint_id
-    pred_root = Path(prediction_dir)
-    pdbs = sorted(pred_root.glob(f"{datapoint_id}_model_*.pdb"))
-    if not pdbs:
-        pdbs = sorted(pred_root.glob(f"{datapoint_id}_model_*.cif"))
+    pdbs = sorted(prediction_dir.glob(f"{datapoint.datapoint_id}_model_*.pdb"))
     return [p.name for p in pdbs]
 
 # -----------------------------------------------------------------------------
