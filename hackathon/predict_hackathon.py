@@ -4,17 +4,41 @@ import json
 import os
 import shutil
 import subprocess
-import sys
-import yaml
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable, List, Optional
+from typing import List, Optional
 
-from hackathon_api import Datapoint
-from hackathon_api import Protein, SmallMolecule
+import yaml
+from hackathon_api import Datapoint, Protein, SmallMolecule
 
 DEFAULT_OUT_DIR = Path("predictions")
 DEFAULT_SUBMISSION_DIR = Path("submission")
 DEFAULT_INPUTS_DIR = Path("inputs")
+
+
+
+ap = argparse.ArgumentParser(
+    description="Hackathon scaffold for Boltz predictions",
+    epilog="Examples:\n"
+            "  Single datapoint: python predict_hackathon.py --input-json examples/specs/example_protein_ligand.json --msa-dir ./msa --submission-dir submission --intermediate-dir intermediate\n"
+            "  Multiple datapoints: python predict_hackathon.py --input-jsonl examples/test_dataset.jsonl --msa-dir ./msa --submission-dir submission --intermediate-dir intermediate",
+    formatter_class=argparse.RawDescriptionHelpFormatter
+)
+
+input_group = ap.add_mutually_exclusive_group(required=True)
+input_group.add_argument("--input-json", type=str,
+                        help="Path to JSON datapoint for a single datapoint")
+input_group.add_argument("--input-jsonl", type=str,
+                        help="Path to JSONL file with multiple datapoint definitions")
+
+ap.add_argument("--msa-dir", type=Path,
+                help="Directory containing MSA files (for computing relative paths in YAML)")
+ap.add_argument("--submission-dir", type=Path, required=False, default=DEFAULT_SUBMISSION_DIR,
+                help="Directory to place final submissions")
+ap.add_argument("--intermediate-dir", type=Path, required=False, default=Path("hackathon_intermediate"),
+                help="Directory to place generated input YAML files and predictions")
+
+args = ap.parse_args()
 
 # ---- Participants may modify only these four functions ----------------------
 
@@ -26,7 +50,8 @@ def get_custom_args(datapoint_id: str) -> List[str]:
     Args:
         datapoint_id: The unique identifier for this datapoint
         
-    Returns:
+    Returns
+    -------
         List of additional command line arguments for boltz predict
     """
     # NOTE: --diffusion_samples controls #models; --output_format selects pdb vs mmcif
@@ -36,7 +61,6 @@ def inputs_to_yaml(
     datapoint_id: str,
     proteins: Iterable[Protein],
     ligand: Optional[SmallMolecule] = None,
-    out_dir: Path = Path("inputs"),
     msa_dir: Optional[Path] = None,
 ) -> Path:
     """
@@ -53,9 +77,11 @@ def inputs_to_yaml(
         out_dir: Directory to write YAML files (default: "inputs")
         msa_dir: Directory containing MSA files (used to compute relative paths)
     
-    Returns:
+    Returns
+    -------
         Path to the created YAML file
     """
+    out_dir = args.intermediate_dir / "input"
     out_dir.mkdir(parents=True, exist_ok=True)
     ypath = out_dir / f"{datapoint_id}.yaml"
 
@@ -68,7 +94,7 @@ def inputs_to_yaml(
                 msa_full_path = Path(p.msa)
             else:
                 msa_full_path = msa_dir / p.msa
-            
+
             # Compute relative path from YAML location to MSA file
             try:
                 msa_relative_path = os.path.relpath(msa_full_path, Path.cwd())
@@ -76,7 +102,7 @@ def inputs_to_yaml(
                 msa_relative_path = str(msa_full_path)
         else:
             msa_relative_path = p.msa
-        
+
         entry = {
             "protein": {
                 "id": p.id,
@@ -85,7 +111,7 @@ def inputs_to_yaml(
             }
         }
         # Add modifications if present and not None
-        if getattr(p, "modifications", None) is not None:
+        if getattr(p, "modifications", None) and p.modifications:
             entry["protein"]["modifications"] = p.modifications
         seqs.append(entry)
 
@@ -105,7 +131,7 @@ def inputs_to_yaml(
 
     with open(ypath, "w") as f:
         yaml.safe_dump(doc, f, sort_keys=False)
-    
+
     return ypath
 
 def predict_protein_complex(datapoint_id: str, proteins: List[Protein], msa_dir: Optional[Path] = None) -> None:
@@ -120,8 +146,8 @@ def predict_protein_complex(datapoint_id: str, proteins: List[Protein], msa_dir:
         proteins: List of protein sequences to predict as a complex
         msa_dir: Directory containing MSA files (for computing relative paths)
     """
-    yaml_path = inputs_to_yaml(datapoint_id, proteins=proteins, ligand=None, 
-                              out_dir=DEFAULT_INPUTS_DIR, msa_dir=msa_dir)
+    yaml_path = inputs_to_yaml(datapoint_id, proteins=proteins, ligand=None,
+                              msa_dir=msa_dir)
     _run_boltz_and_collect(datapoint_id, yaml_path)
 
 def predict_protein_ligand(datapoint_id: str, protein: Protein, ligand: SmallMolecule, msa_dir: Optional[Path] = None) -> None:
@@ -137,8 +163,8 @@ def predict_protein_ligand(datapoint_id: str, protein: Protein, ligand: SmallMol
         ligand: The small molecule/ligand
         msa_dir: Directory containing MSA files (for computing relative paths)
     """
-    yaml_path = inputs_to_yaml(datapoint_id, proteins=[protein], ligand=ligand, 
-                              out_dir=DEFAULT_INPUTS_DIR, msa_dir=msa_dir)
+    yaml_path = inputs_to_yaml(datapoint_id, proteins=[protein], ligand=ligand,
+                              msa_dir=msa_dir)
     _run_boltz_and_collect(datapoint_id, yaml_path)
 
 # ---- End of participant section ---------------------------------------------
@@ -146,12 +172,12 @@ def predict_protein_ligand(datapoint_id: str, protein: Protein, ligand: SmallMol
 def _run_boltz_and_collect(datapoint_id: str, input_yaml: Path) -> None:
     """
     Runs boltz predict with fixed args + custom args, then copies
-    <out_dir>/predictions/{datapoint_id}/{datapoint_id}_model_{0..}.[pdb|cif]
-    to submission/{datapoint_id}/model_{0..}.pdb
+    <intermediate_dir>/predictions/boltz_results_{datapoint_id}/predictions/{datapoint_id}/{datapoint_id}_model_{0..}.[pdb|cif]
+    to submission_dir/{datapoint_id}/model_{0..}.pdb
     """
-    out_dir = DEFAULT_OUT_DIR
+    out_dir = args.intermediate_dir / "predictions"
     out_dir.mkdir(parents=True, exist_ok=True)
-    subdir = DEFAULT_SUBMISSION_DIR / datapoint_id
+    subdir = args.submission_dir / datapoint_id
     subdir.mkdir(parents=True, exist_ok=True)
 
     # Fixed args (safe defaults)
@@ -178,13 +204,13 @@ def _run_boltz_and_collect(datapoint_id: str, input_yaml: Path) -> None:
     if not pdbs:
         raise FileNotFoundError(f"No model files found for {datapoint_id} under {pred_root}")
 
-    # Copy to submission/{datapoint_id}/model_{i}.pdb (if cif, keep .cif to be honest)
+    # Copy to submission_dir/{datapoint_id}/model_{i}.pdb (if cif, keep .cif to be honest)
     for i, p in enumerate(pdbs):
         target = subdir / (f"model_{i}.pdb" if p.suffix == ".pdb" else f"model_{i}{p.suffix}")
         shutil.copy2(p, target)
         print(f"Saved: {target}")
 
-    subprocess.run(["chmod", "-R", "777", str(subdir)], capture_output=True, text=True)
+    subprocess.run(["chmod", "-R", "777", str(subdir)], check=False, capture_output=True, text=True)
 
 def _load_datapoint(path: Path):
     """Load JSON datapoint file."""
@@ -195,7 +221,7 @@ def _process_single_datapoint(datapoint: Datapoint, msa_dir: Optional[Path] = No
     """Process a single datapoint specification."""
     datapoint_id = datapoint.datapoint_id
     task_type = datapoint.task_type
-    
+
     # Route based on task_type field
     if task_type == "protein_ligand":
         if not datapoint.ligand:
@@ -225,7 +251,7 @@ def _process_single_datapoint(datapoint: Datapoint, msa_dir: Optional[Path] = No
 def _process_jsonl(jsonl_path: str, msa_dir: Optional[Path] = None):
     """Process multiple datapoints from a JSONL file."""
     print(f"Processing JSONL file: {jsonl_path}")
-    
+
     for line_num, line in enumerate(Path(jsonl_path).read_text().splitlines(), 1):
         if not line.strip():
             continue
@@ -247,7 +273,7 @@ def _process_jsonl(jsonl_path: str, msa_dir: Optional[Path] = None):
 def _process_json(json_path: str, msa_dir: Optional[Path] = None):
     """Process a single datapoint from a JSON file."""
     print(f"Processing JSON file: {json_path}")
-    
+
     try:
         datapoint = _load_datapoint(Path(json_path))
         _process_single_datapoint(datapoint, msa_dir)
@@ -257,25 +283,6 @@ def _process_json(json_path: str, msa_dir: Optional[Path] = None):
 
 def main():
     """Main entry point for the hackathon scaffold."""
-    ap = argparse.ArgumentParser(
-        description="Hackathon scaffold for Boltz predictions",
-        epilog="Examples:\n"
-               "  Single datapoint: python predict_hackathon.py --input-json examples/specs/example_protein_ligand.json --msa-dir ./msa\n"
-               "  Multiple datapoints: python predict_hackathon.py --input-jsonl examples/test_dataset.jsonl --msa-dir ./msa",
-        formatter_class=argparse.RawDescriptionHelpFormatter
-    )
-    
-    input_group = ap.add_mutually_exclusive_group(required=True)
-    input_group.add_argument("--input-json", type=str,
-                            help="Path to JSON datapoint for a single datapoint")
-    input_group.add_argument("--input-jsonl", type=str,
-                            help="Path to JSONL file with multiple datapoint definitions")
-    
-    ap.add_argument("--msa-dir", type=Path,
-                    help="Directory containing MSA files (for computing relative paths in YAML)")
-    
-    args = ap.parse_args()
-    
     if args.input_json:
         _process_json(args.input_json, args.msa_dir)
     elif args.input_jsonl:
