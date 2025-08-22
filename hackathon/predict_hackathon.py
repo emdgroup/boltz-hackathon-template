@@ -11,7 +11,9 @@ from typing import Any, List, Optional
 import yaml
 from hackathon_api import Datapoint, Protein, SmallMolecule
 
-# ---- Participants may modify only these four functions ----------------------
+# ---------------------------------------------------------------------------
+# ---- Participants should modify these four functions ----------------------
+# ---------------------------------------------------------------------------
 
 def prepare_protein_complex(datapoint_id: str, proteins: List[Protein], input_dict: dict, msa_dir: Optional[Path] = None) -> tuple[dict, List[str]]:
     """
@@ -77,7 +79,9 @@ def post_process_protein_ligand(datapoint: Datapoint, input_dict: dict[str, Any]
         pdbs = sorted(pred_root.glob(f"{datapoint_id}_model_*.cif"))
     return [p.name for p in pdbs]
 
+# -----------------------------------------------------------------------------
 # ---- End of participant section ---------------------------------------------
+# -----------------------------------------------------------------------------
 
 
 DEFAULT_OUT_DIR = Path("predictions")
