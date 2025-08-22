@@ -37,6 +37,8 @@ ap.add_argument("--submission-dir", type=Path, required=False, default=DEFAULT_S
                 help="Directory to place final submissions")
 ap.add_argument("--intermediate-dir", type=Path, required=False, default=Path("hackathon_intermediate"),
                 help="Directory to place generated input YAML files and predictions")
+ap.add_argument("--group-id", type=str, required=False, default=None,
+                help="Group ID to set for submission directory (sets group rw access if specified)")
 
 args = ap.parse_args()
 
@@ -210,7 +212,13 @@ def _run_boltz_and_collect(datapoint_id: str, input_yaml: Path) -> None:
         shutil.copy2(p, target)
         print(f"Saved: {target}")
 
-    subprocess.run(["chmod", "-R", "777", str(subdir)], check=False, capture_output=True, text=True)
+    # If group-id is specified, set group ownership and group rw access
+    if args.group_id:
+        try:
+            subprocess.run(["chgrp", "-R", args.group_id, str(subdir)], check=True)
+            subprocess.run(["chmod", "-R", "g+rw", str(subdir)], check=True)
+        except Exception as e:
+            print(f"WARNING: Failed to set group ownership or permissions: {e}")
 
 def _load_datapoint(path: Path):
     """Load JSON datapoint file."""
