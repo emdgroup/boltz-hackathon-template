@@ -47,13 +47,13 @@ def prepare_protein_complex(datapoint_id: str, proteins: List[Protein], input_di
     cli_args = ["--diffusion_samples", "5"]
     return input_dict, cli_args
 
-def prepare_protein_ligand(datapoint_id: str, protein: Protein, ligand: SmallMolecule, input_dict: dict, msa_dir: Optional[Path] = None) -> tuple[dict, List[str]]:
+def prepare_protein_ligand(datapoint_id: str, protein: Protein, ligands: list[SmallMolecule], input_dict: dict, msa_dir: Optional[Path] = None) -> tuple[dict, List[str]]:
     """
     Prepare input dict and CLI args for a protein-ligand prediction.
     Args:
         datapoint_id: The unique identifier for this datapoint
         protein: The protein sequence
-        ligand: The small molecule/ligand
+        ligands: A list of small molecule/ligand objects
         input_dict: Prefilled input dict
         msa_dir: Directory containing MSA files (for computing relative paths)
     Returns:
@@ -61,8 +61,7 @@ def prepare_protein_ligand(datapoint_id: str, protein: Protein, ligand: SmallMol
     """
     # Please note:
     # `protein` is a single-chain target protein sequence with id T
-    # `ligand` is a small molecule/ligand with id L and unknown binding site
-    #
+    # `ligands` is a list of small molecule/ligand objects with unknown binding sites
     # you can modify input_dict to change the input yaml file going into the prediction, e.g.
     # ```
     # input_dict["constraints"] = [{
@@ -141,7 +140,7 @@ ap.add_argument("--group-id", type=str, required=False, default=None,
 
 args = ap.parse_args()
 
-def _prefill_input_dict(datapoint_id: str, proteins: Iterable[Protein], ligand: Optional[SmallMolecule] = None, msa_dir: Optional[Path] = None) -> dict:
+def _prefill_input_dict(datapoint_id: str, proteins: Iterable[Protein], ligands: Optional[list[SmallMolecule]] = None, msa_dir: Optional[Path] = None) -> dict:
     """
     Prepare input dict for Boltz YAML.
     """
@@ -168,14 +167,15 @@ def _prefill_input_dict(datapoint_id: str, proteins: Iterable[Protein], ligand: 
         if getattr(p, "modifications", None) and p.modifications:
             entry["protein"]["modifications"] = p.modifications
         seqs.append(entry)
-    if ligand:
-        l = {
-            "ligand": {
-                "id": ligand.id,
-                "smiles": ligand.smiles
+    if ligands:
+        for ligand in ligands:
+            l = {
+                "ligand": {
+                    "id": ligand.id,
+                    "smiles": ligand.smiles
+                }
             }
-        }
-        seqs.append(l)
+            seqs.append(l)
     doc = {
         "version": 1,
         "sequences": seqs,
@@ -192,12 +192,12 @@ def _run_boltz_and_collect(datapoint) -> None:
     subdir.mkdir(parents=True, exist_ok=True)
 
     # Prepare input dict and CLI args
-    input_dict = _prefill_input_dict(datapoint.datapoint_id, datapoint.proteins, datapoint.ligand, args.msa_dir)
+    input_dict = _prefill_input_dict(datapoint.datapoint_id, datapoint.proteins, datapoint.ligands, args.msa_dir)
 
     if datapoint.task_type == "protein_complex":
         input_dict, cli_args = prepare_protein_complex(datapoint.datapoint_id, datapoint.proteins, input_dict, args.msa_dir)
     elif datapoint.task_type == "protein_ligand":
-        input_dict, cli_args = prepare_protein_ligand(datapoint.datapoint_id, datapoint.proteins[0], datapoint.ligand, input_dict, args.msa_dir)
+        input_dict, cli_args = prepare_protein_ligand(datapoint.datapoint_id, datapoint.proteins[0], datapoint.ligands, input_dict, args.msa_dir)
     else:
         raise ValueError(f"Unknown task_type: {datapoint.task_type}")
 

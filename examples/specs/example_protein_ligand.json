@@ -8,10 +8,12 @@
       "msa_path": "examples/msa/seq1.a3m"
     }
   ],
-  "ligand": {
-    "id": "B",
-    "smiles": "N[C@@H](Cc1ccc(O)cc1)C(=O)O"
-  },
+  "ligands": [
+    {
+      "id": "B",
+      "smiles": "N[C@@H](Cc1ccc(O)cc1)C(=O)O"
+    }
+  ],
   "ground_truth": {
     "structure": "examples/ground_truth/affinity.pdb"
   }

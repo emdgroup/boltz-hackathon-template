@@ -42,7 +42,7 @@ class Datapoint:
     datapoint_id: str
     task_type: TaskType
     proteins: list[Protein]
-    ligand: Optional[SmallMolecule] = None
+    ligands: Optional[list[SmallMolecule]] = None
     ground_truth: Optional[dict[str, Any]] = None
     # Optionally, add other fields as needed (e.g., metadata)
 
