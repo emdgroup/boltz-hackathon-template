@@ -1,160 +1,86 @@
 # Boltz Hackathon Template 🧬
 
-Welcome to the Boltz Hackathon! This template provides a scaffold for participants to improve the [Boltz](https://github.com/jwohlwend/boltz) protein structure prediction model.
+Welcome to the Boltz Hackathon!
+It is great to have you here!
+This template provides a scaffold for participating in the antibody-antigen complex prediction challenge and the allosteric-orthosteric ligand challenge.
+Please read these instructions carefully before you start.
 
-## Quick Start
+This repository is a fork of the [Boltz](https://github.com/jwohlwend/boltz) repository and has been modified for the hackathon to allow a straightforward evaluation of your contributions.
 
-```bash
-# Run a single protein-ligand prediction
-python predict_hackathon.py --input-json examples/specs/example_protein_ligand.json
+## Setup
 
-# Run a single protein complex prediction  
-python predict_hackathon.py --input-json examples/specs/example_protein_complex.json
+Different from the original installation instructions, please set up your environment by first using conda/mamba to create the environment and then use pip to install the Boltz package.
 
-# Run multiple predictions from a dataset
-python predict_hackathon.py --input-jsonl examples/test_dataset.jsonl
-
-# Check your submissions
-python runner/validate_submission.py
+```
+git clone https://github.com/emdgroup/boltz-hackathon-template.git
+cd boltz
+conda env create -f environment.yml --name boltz
+conda activate boltz
+pip install -e .[cuda]
 ```
 
-After running, check the results:
-- `inputs/` - Generated YAML files for Boltz
-- `predictions/` - Raw Boltz outputs
-- `submission/` - Clean submission files for evaluation
+## Entrypoints for Participants
 
-## For Participants 🎯
+### `hackathon/predict_hackathon.py`
 
-You only need to modify **four functions** in `predict_hackathon.py`:
+We will evaluate your contributions by calling `hackathon/predict_hackathon.py` that will do the following three main steps for each data point of a dataset: 
 
-1. **`get_custom_args(datapoint_id)`** - Add custom CLI arguments for Boltz
-2. **`inputs_to_yaml(datapoint_id, proteins, ligand, out_dir)`** - Customize YAML generation for Boltz
-3. **`predict_protein_complex(datapoint_id, proteins)`** - Custom logic for protein complexes  
-4. **`predict_protein_ligand(datapoint_id, protein, ligand)`** - Custom logic for protein-ligand interactions
+- generate input yaml files and CLI arguments
+- call Boltz
+- move predicted structures to a submission folder
 
-### Example Modifications
+Inside `hackathon/predict_hackathon.py`, you can modify the following functions for the antibody-antigen complex prediction challenge:
 
-```python
-def get_custom_args(datapoint_id: str) -> List[str]:
-    """Customize Boltz prediction parameters."""
-    return [
-        "--diffusion_samples", "10",      # Generate 10 models instead of 5
-        "--recycling_steps", "5",         # More recycling steps
-        "--num_sampling_steps", "200"     # Custom sampling
-    ]
+`def prepare_protein_complex(datapoint_id: str, proteins: List[Protein], input_dict: dict, msa_dir: Optional[Path] = None) -> tuple[dict, List[str]]:`
 
-def inputs_to_yaml(datapoint_id: str, proteins: Iterable[Protein], 
-                   ligand: Optional[SmallMolecule] = None, 
-                   out_dir: Path = Path("inputs")) -> Path:
-    """Customize YAML generation for Boltz."""
-    out_dir.mkdir(parents=True, exist_ok=True)
-    ypath = out_dir / f"{datapoint_id}.yaml"
-    
-    seqs = []
-    for p in proteins:
-        entry = {
-            "protein": {
-                "id": p.id,
-                "sequence": p.sequence,
-                "msa": p.msa_path,
-                "chain_id": p.chain_id,
-                # Add custom fields like structure templates, constraints, etc.
-                # "template": "path/to/template.pdb",
-                # "constraints": {"distance": [{"atom1": "A:1:CA", "atom2": "B:10:CA", "distance": 8.0}]}
-            }
-        }
-        seqs.append(entry)
-    
-    if ligand:
-        l = {
-            "ligand": {
-                "id": ligand.id,
-                "smiles": ligand.smiles,
-                "chain_id": ligand.chain_id,
-                # Add custom ligand properties
-                # "conformers": 10,
-                # "charge": 0
-            }
-        }
-        seqs.append(l)
-    
-    doc = {
-        "version": 1,
-        "sequences": seqs,
-        # Add global settings
-        # "pocket": {"center": [0, 0, 0], "radius": 10.0}
-    }
-    
-    with open(ypath, "w") as f:
-        yaml.safe_dump(doc, f, sort_keys=False)
-    
-    return ypath
+This function gets as input:
 
-def predict_protein_complex(datapoint_id: str, proteins: List[Protein]) -> None:
-    """Add custom pre/post-processing for complexes."""
-    # Your custom preprocessing here
-    print(f"Processing {len(proteins)} proteins for complex {datapoint_id}")
-    
-    # Call the standard pipeline (or replace with your approach)
-    yaml_path = inputs_to_yaml(datapoint_id, proteins=proteins, ligand=None, out_dir=DEFAULT_INPUTS_DIR)
-    _run_boltz_and_collect(datapoint_id, yaml_path)
-    
-    # Your custom postprocessing here
-    print(f"Finished complex prediction for {datapoint_id}")
+- `datapoint_id`: The ID of the current datapoint
+- `proteins`: A list of protein objects to be processed
+- `input_dict`: A pre-filled dictionary containing the YAML definition for that data point
+- `msa_dir`: The directory with the MSA files
+
+This function should output two things:
+
+- A modified `input_dict` with any changes made during preparation
+- A list of CLI arguments that should be passed to Boltz for this data point.
+
+You can modify this function, e.g., to tailor the CLI args like changing the number of diffusion samples or recycling steps. Or you could add constraints to the yaml file through modifications to the `input_dict`.
+
+With the provided information, the script will then call Boltz to make the prediction. 
+Afterwards, the following function gets called:
+
+`def post_process_protein_complex(datapoint: Datapoint, input_dict: dict[str, Any], cli_args: list[str], prediction_dir: Path) -> List[str]:` 
+
+In addition to the input dictionary and the CLI arguments that were used for this data point, the function also receives the path to the directory containing the predicted structures. 
+The function should return a list of file names pointing to the PDB files of the predicted structures.
+The order is important!
+The first file name will be your top 1 prediction, and we will evaluate up to 5 predictions for each data point.
+
+For the allosteric-orthosteric ligand challenge, there are similar functions:
+
+`def prepare_protein_ligand(datapoint_id: str, protein: Protein, ligands: list[SmallMolecule], input_dict: dict, msa_dir: Optional[Path] = None) -> tuple[dict, List[str]]:`
+
+and
+
+`def post_process_protein_ligand(datapoint: Datapoint, input_dict: dict[str, Any], cli_args: list[str], prediction_dir: Path) -> List[str]:`
+
+These functions serve as quick start entrypoints. 
+Feel free to modify any other part of `hackathon/predict_hackathon.py` as long as the final predictions are stored like
+
+```
+{submission_dir}/
+├── {datapoint_id_1}/
+│   ├── model_0.pdb
+│   ├── model_1.pdb
+│   ├── model_2.pdb
+│   ├── model_3.pdb
+│   └── model_4.pdb
+└── {datapoint_id_2}/
+    ├── model_0.pdb
+    └── ...
 ```
 
-## Input Format 📝
-
-Each datapoint must include a `task_type` field with either `"protein_complex"` or `"protein_ligand"`:
-
-**Required Fields:**
-- `datapoint_id`: Unique identifier for the prediction
-- `task_type`: Either `"protein_complex"` or `"protein_ligand"`
-- `proteins`: List of protein objects with `id`, `sequence`, `msa_path`, and `chain_id`
-- `ligand` (for protein_ligand tasks): Ligand object with `id`, `smiles`, and `chain_id`
-
-### Protein-Ligand Example
-```json
-{
-  "datapoint_id": "my_ligand_prediction",
-  "task_type": "protein_ligand",
-  "proteins": [
-    {
-      "id": "A",
-      "sequence": "MVTPEGNVSLVDESLLVGV...",
-      "msa_path": "path/to/seq1.a3m",
-      "chain_id": "A"
-    }
-  ],
-  "ligand": {
-    "id": "ligand1", 
-    "smiles": "N[C@@H](Cc1ccc(O)cc1)C(=O)O",
-    "chain_id": "Z"
-  }
-}
-```
-
-### Protein Complex Example  
-```json
-{
-  "datapoint_id": "my_complex_prediction",
-  "task_type": "protein_complex",
-  "proteins": [
-    {
-      "id": "A",
-      "sequence": "MVTPEGNVSLVDESLLVGV...",
-      "msa_path": "path/to/seq1.a3m",
-      "chain_id": "A"
-    },
-    {
-      "id": "B", 
-      "sequence": "GKTPEGNVSLVDESLLVGV...",
-      "msa_path": "path/to/seq2.a3m",
-      "chain_id": "B"
-    }
-  ]
-}
-```
 
 ## Technical Details ⚙️
 
