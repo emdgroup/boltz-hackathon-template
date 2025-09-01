@@ -168,14 +168,20 @@ def _prefill_input_dict(datapoint_id: str, proteins: Iterable[Protein], ligands:
             entry["protein"]["modifications"] = p.modifications
         seqs.append(entry)
     if ligands:
-        for ligand in ligands:
-            l = {
+        def _format_ligand(ligand: SmallMolecule) -> dict:
+            output =  {
                 "ligand": {
                     "id": ligand.id,
-                    "smiles": ligand.smiles
                 }
             }
-            seqs.append(l)
+            if ligand.ccd:
+                output["ligand"]["ccd"] = ligand.ccd
+            else:
+                output["ligand"]["smiles"] = ligand.smiles
+            return output
+        
+        for ligand in ligands:
+            seqs.append(_format_ligand(ligand))
     doc = {
         "version": 1,
         "sequences": seqs,
