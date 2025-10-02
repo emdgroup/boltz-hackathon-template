@@ -15,16 +15,17 @@ from hackathon_api import Datapoint, Protein, SmallMolecule
 # ---- Participants should modify these four functions ----------------------
 # ---------------------------------------------------------------------------
 
-def prepare_protein_complex(datapoint_id: str, proteins: List[Protein], input_dict: dict, msa_dir: Optional[Path] = None) -> tuple[dict, List[str]]:
+def prepare_protein_complex(datapoint_id: str, proteins: List[Protein], input_dict: dict, msa_dir: Optional[Path] = None) -> List[tuple[dict, List[str]]]:
     """
     Prepare input dict and CLI args for a protein complex prediction.
+    You can return multiple configurations to run by returning a list of (input_dict, cli_args) tuples.
     Args:
         datapoint_id: The unique identifier for this datapoint
         proteins: List of protein sequences to predict as a complex
         input_dict: Prefilled input dict
         msa_dir: Directory containing MSA files (for computing relative paths)
     Returns:
-        Tuple of (final input dict, list of CLI args)
+        List of tuples of (final input dict, list of CLI args). Each tuple represents a separate configuration to run.
     """
     # Please note:
     # `proteins`` will contain 3 chains
@@ -45,11 +46,12 @@ def prepare_protein_complex(datapoint_id: str, proteins: List[Protein], input_di
 
     # Example: predict 5 structures
     cli_args = ["--diffusion_samples", "5"]
-    return input_dict, cli_args
+    return [(input_dict, cli_args)]
 
-def prepare_protein_ligand(datapoint_id: str, protein: Protein, ligands: list[SmallMolecule], input_dict: dict, msa_dir: Optional[Path] = None) -> tuple[dict, List[str]]:
+def prepare_protein_ligand(datapoint_id: str, protein: Protein, ligands: list[SmallMolecule], input_dict: dict, msa_dir: Optional[Path] = None) -> List[tuple[dict, List[str]]]:
     """
     Prepare input dict and CLI args for a protein-ligand prediction.
+    You can return multiple configurations to run by returning a list of (input_dict, cli_args) tuples.
     Args:
         datapoint_id: The unique identifier for this datapoint
         protein: The protein sequence
@@ -57,7 +59,7 @@ def prepare_protein_ligand(datapoint_id: str, protein: Protein, ligands: list[Sm
         input_dict: Prefilled input dict
         msa_dir: Directory containing MSA files (for computing relative paths)
     Returns:
-        Tuple of (final input dict, list of CLI args)
+        List of tuples of (final input dict, list of CLI args). Each tuple represents a separate configuration to run.
     """
     # Please note:
     # `protein` is a single-chain target protein sequence with id T
@@ -75,36 +77,50 @@ def prepare_protein_ligand(datapoint_id: str, protein: Protein, ligands: list[Sm
     # will add contact constraints to the input_dict
 
     # Example: predict 5 structures
-    cli_args = ["--diffusion_samples", "5"]
-    return input_dict, cli_args
+    cli_args = ["--diffusion_samples", "5", '--use_msa_server']
+    return [(input_dict, cli_args)]
 
-def post_process_protein_complex(datapoint: Datapoint, input_dict: dict[str, Any], cli_args: list[str], prediction_dir: Path) -> List[str]:
+def post_process_protein_complex(datapoint: Datapoint, input_dicts: List[dict[str, Any]], cli_args_list: List[list[str]], prediction_dirs: List[Path]) -> List[Path]:
     """
     Return ranked model files for protein complex submission.
     Args:
         datapoint: The original datapoint object
-        input_dict: The input dictionary used for prediction
-        cli_args: The command line arguments used for prediction
-        prediction_dir: The directory containing prediction results
+        input_dicts: List of input dictionaries used for predictions (one per config)
+        cli_args_list: List of command line arguments used for predictions (one per config)
+        prediction_dirs: List of directories containing prediction results (one per config)
     Returns: 
-        Sorted pdb file names that should be used as your submission.
+        Sorted pdb file paths that should be used as your submission.
     """
-    pdbs = sorted(prediction_dir.glob(f"{datapoint.datapoint_id}_model_*.pdb"))
-    return [p.name for p in pdbs]
+    # Collect all PDBs from all configurations
+    all_pdbs = []
+    for prediction_dir in prediction_dirs:
+        config_pdbs = sorted(prediction_dir.glob(f"{datapoint.datapoint_id}_config_*_model_*.pdb"))
+        all_pdbs.extend(config_pdbs)
 
-def post_process_protein_ligand(datapoint: Datapoint, input_dict: dict[str, Any], cli_args: list[str], prediction_dir: Path) -> List[str]:
+    # Sort all PDBs and return their paths
+    all_pdbs = sorted(all_pdbs)
+    return all_pdbs
+
+def post_process_protein_ligand(datapoint: Datapoint, input_dicts: List[dict[str, Any]], cli_args_list: List[list[str]], prediction_dirs: List[Path]) -> List[Path]:
     """
     Return ranked model files for protein-ligand submission.
     Args:
         datapoint: The original datapoint object
-        input_dict: The input dictionary used for prediction
-        cli_args: The command line arguments used for prediction
-        prediction_dir: The directory containing prediction results
+        input_dicts: List of input dictionaries used for predictions (one per config)
+        cli_args_list: List of command line arguments used for predictions (one per config)
+        prediction_dirs: List of directories containing prediction results (one per config)
     Returns: 
-        Sorted pdb file names that should be used as your submission.
+        Sorted pdb file paths that should be used as your submission.
     """
-    pdbs = sorted(prediction_dir.glob(f"{datapoint.datapoint_id}_model_*.pdb"))
-    return [p.name for p in pdbs]
+    # Collect all PDBs from all configurations
+    all_pdbs = []
+    for prediction_dir in prediction_dirs:
+        config_pdbs = sorted(prediction_dir.glob(f"{datapoint.datapoint_id}_config_*_model_*.pdb"))
+        all_pdbs.extend(config_pdbs)
+    
+    # Sort all PDBs and return their paths
+    all_pdbs = sorted(all_pdbs)
+    return all_pdbs
 
 # -----------------------------------------------------------------------------
 # ---- End of participant section ---------------------------------------------
@@ -198,44 +214,55 @@ def _run_boltz_and_collect(datapoint) -> None:
     subdir.mkdir(parents=True, exist_ok=True)
 
     # Prepare input dict and CLI args
-    input_dict = _prefill_input_dict(datapoint.datapoint_id, datapoint.proteins, datapoint.ligands, args.msa_dir)
+    base_input_dict = _prefill_input_dict(datapoint.datapoint_id, datapoint.proteins, datapoint.ligands, args.msa_dir)
 
     if datapoint.task_type == "protein_complex":
-        input_dict, cli_args = prepare_protein_complex(datapoint.datapoint_id, datapoint.proteins, input_dict, args.msa_dir)
+        configs = prepare_protein_complex(datapoint.datapoint_id, datapoint.proteins, base_input_dict, args.msa_dir)
     elif datapoint.task_type == "protein_ligand":
-        input_dict, cli_args = prepare_protein_ligand(datapoint.datapoint_id, datapoint.proteins[0], datapoint.ligands, input_dict, args.msa_dir)
+        configs = prepare_protein_ligand(datapoint.datapoint_id, datapoint.proteins[0], datapoint.ligands, base_input_dict, args.msa_dir)
     else:
         raise ValueError(f"Unknown task_type: {datapoint.task_type}")
 
-    # Write input YAML
+    # Run boltz for each configuration
+    all_input_dicts = []
+    all_cli_args = []
+    all_pred_subfolders = []
+    
     input_dir = args.intermediate_dir / "input"
     input_dir.mkdir(parents=True, exist_ok=True)
-    yaml_path = input_dir / f"{datapoint.datapoint_id}.yaml"
-    with open(yaml_path, "w") as f:
-        yaml.safe_dump(input_dict, f, sort_keys=False)
+    
+    for config_idx, (input_dict, cli_args) in enumerate(configs):
+        # Write input YAML with config index suffix
+        yaml_path = input_dir / f"{datapoint.datapoint_id}_config_{config_idx}.yaml"
+        with open(yaml_path, "w") as f:
+            yaml.safe_dump(input_dict, f, sort_keys=False)
 
-    # Run boltz
-    cache = os.environ.get("BOLTZ_CACHE", str(Path.home() / ".boltz"))
-    fixed = [
-        "boltz", "predict", str(yaml_path),
-        "--devices", "1",
-        "--out_dir", str(out_dir),
-        "--cache", cache,
-        "--no_kernels",
-        "--output_format", "pdb",
-    ]
-    cmd = fixed + cli_args
-    print("Running:", " ".join(cmd), flush=True)
-    subprocess.run(cmd, check=True)
+        # Run boltz
+        cache = os.environ.get("BOLTZ_CACHE", str(Path.home() / ".boltz"))
+        fixed = [
+            "boltz", "predict", str(yaml_path),
+            "--devices", "1",
+            "--out_dir", str(out_dir),
+            "--cache", cache,
+            "--no_kernels",
+            "--output_format", "pdb",
+        ]
+        cmd = fixed + cli_args
+        print(f"Running config {config_idx}:", " ".join(cmd), flush=True)
+        subprocess.run(cmd, check=True)
 
-    # Compute prediction subfolder
-    pred_subfolder = out_dir / f"boltz_results_{datapoint.datapoint_id}" / "predictions" / datapoint.datapoint_id
+        # Compute prediction subfolder for this config
+        pred_subfolder = out_dir / f"boltz_results_{datapoint.datapoint_id}_config_{config_idx}" / "predictions" / f"{datapoint.datapoint_id}_config_{config_idx}"
+        
+        all_input_dicts.append(input_dict)
+        all_cli_args.append(cli_args)
+        all_pred_subfolders.append(pred_subfolder)
 
     # Post-process and copy submissions
     if datapoint.task_type == "protein_complex":
-        ranked_files = post_process_protein_complex(datapoint, input_dict, cli_args, pred_subfolder)
+        ranked_files = post_process_protein_complex(datapoint, all_input_dicts, all_cli_args, all_pred_subfolders)
     elif datapoint.task_type == "protein_ligand":
-        ranked_files = post_process_protein_ligand(datapoint, input_dict, cli_args, pred_subfolder)
+        ranked_files = post_process_protein_ligand(datapoint, all_input_dicts, all_cli_args, all_pred_subfolders)
     else:
         raise ValueError(f"Unknown task_type: {datapoint.task_type}")
 
@@ -243,9 +270,8 @@ def _run_boltz_and_collect(datapoint) -> None:
         raise FileNotFoundError(f"No model files found for {datapoint.datapoint_id}")
 
     for i, file_path in enumerate(ranked_files):
-        p = pred_subfolder / file_path
-        target = subdir / (f"model_{i}.pdb" if p.suffix == ".pdb" else f"model_{i}{p.suffix}")
-        shutil.copy2(p, target)
+        target = subdir / (f"model_{i}.pdb" if file_path.suffix == ".pdb" else f"model_{i}{file_path.suffix}")
+        shutil.copy2(file_path, target)
         print(f"Saved: {target}")
 
     if args.group_id:

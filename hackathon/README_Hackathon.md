@@ -31,7 +31,7 @@ We will evaluate your contributions by calling `hackathon/predict_hackathon.py` 
 
 Inside `hackathon/predict_hackathon.py`, you can modify the following functions for the antibody-antigen complex prediction challenge:
 
-`def prepare_protein_complex(datapoint_id: str, proteins: List[Protein], input_dict: dict, msa_dir: Optional[Path] = None) -> tuple[dict, List[str]]:`
+`def prepare_protein_complex(datapoint_id: str, proteins: List[Protein], input_dict: dict, msa_dir: Optional[Path] = None) -> List[tuple[dict, List[str]]]:`
 
 This function gets as input:
 
@@ -40,31 +40,42 @@ This function gets as input:
 - `input_dict`: A pre-filled dictionary containing the YAML definition for that data point
 - `msa_dir`: The directory with the MSA files
 
-This function should output two things:
+This function should output a **list of tuples**, where each tuple contains:
 
 - A modified `input_dict` with any changes made during preparation
-- A list of CLI arguments that should be passed to Boltz for this data point.
+- A list of CLI arguments that should be passed to Boltz for this configuration.
+
+By returning multiple tuples, you can run Boltz with different configurations for the same datapoint (e.g., different sampling strategies, different constraints, different hyperparameters). Each configuration will be run separately with its own YAML file.
 
 You can modify this function, e.g., to tailor the CLI args like changing the number of diffusion samples or recycling steps. Or you could add constraints to the yaml file through modifications to the `input_dict`.
 
-With the provided information, the script will then call Boltz to make the prediction. 
+With the provided information, the script will then call Boltz once for each configuration. 
 Afterwards, the following function gets called:
 
-`def post_process_protein_complex(datapoint: Datapoint, input_dict: dict[str, Any], cli_args: list[str], prediction_dir: Path) -> List[str]:` 
+`def post_process_protein_complex(datapoint: Datapoint, input_dicts: List[dict[str, Any]], cli_args_list: List[list[str]], prediction_dirs: List[Path]) -> List[Path]:` 
 
-In addition to the input dictionary and the CLI arguments that were used for this data point, the function also receives the path to the directory containing the predicted structures. 
-The function should return a list of file names pointing to the PDB files of the predicted structures.
+This function receives:
+- `datapoint`: The original datapoint object
+- `input_dicts`: A list of input dictionaries used (one per configuration)
+- `cli_args_list`: A list of CLI arguments used (one per configuration)
+- `prediction_dirs`: A list of directories containing prediction results (one per configuration)
+
+The function should return a list of **Path objects** pointing to the PDB files of the predicted structures across all configurations.
 The order is important!
-The first file name will be your top 1 prediction, and we will evaluate up to 5 predictions for each data point.
-You can use `post_process_protein_complex`, e.g., to modify, combine or re-rank the predicted structures.
+The first path will be your top 1 prediction, and we will evaluate up to 5 predictions for each data point.
+You can use `post_process_protein_complex`, e.g., to modify, combine or re-rank the predicted structures from multiple configurations.
 
 For the allosteric-orthosteric ligand challenge, there are similar functions:
 
-`def prepare_protein_ligand(datapoint_id: str, protein: Protein, ligands: list[SmallMolecule], input_dict: dict, msa_dir: Optional[Path] = None) -> tuple[dict, List[str]]:`
+`def prepare_protein_ligand(datapoint_id: str, protein: Protein, ligands: list[SmallMolecule], input_dict: dict, msa_dir: Optional[Path] = None) -> List[tuple[dict, List[str]]]:`
+
+This function also returns a **list of tuples** to support multiple configurations per datapoint.
 
 and
 
-`def post_process_protein_ligand(datapoint: Datapoint, input_dict: dict[str, Any], cli_args: list[str], prediction_dir: Path) -> List[str]:`
+`def post_process_protein_ligand(datapoint: Datapoint, input_dicts: List[dict[str, Any]], cli_args_list: List[list[str]], prediction_dirs: List[Path]) -> List[Path]:`
+
+This function receives lists of configurations and returns a list of **Path objects** pointing to the ranked PDB files.
 
 These functions serve as quick start entrypoints. 
 Feel free to modify any other part of `hackathon/predict_hackathon.py` as long as the final predictions are stored like
