@@ -146,62 +146,125 @@ class A3MProcessor:
             self.a3m_content.split("\n"), seq_ranges, chain_names
         )
 
-        self._write_output_files(out_dir, nonpairing_a3ms, pairing_a3ms)
+        # Extract query sequences for each chain
+        query_sequences = {}
+        for chain_name in chain_names:
+            # Try to get query from pairing first, then non-pairing
+            pairing_lines = pairing_a3ms.get(chain_name, [])
+            nonpairing_lines = nonpairing_a3ms.get(chain_name, [])
+            
+            if len(pairing_lines) > 1:
+                query_sequences[chain_name] = pairing_lines[1]
+            elif len(nonpairing_lines) > 1:
+                query_sequences[chain_name] = nonpairing_lines[1]
+            else:
+                query_sequences[chain_name] = ""
 
-    def _write_csv_file(
-        self, csv_file_name: Path, lines: list[str], start_key: int
+        self._write_output_files(out_dir, nonpairing_a3ms, pairing_a3ms, query_sequences)
+
+    def _write_msa_to_csv(
+        self,
+        csv_file_name: Path,
+        query_sequence: str,
+        pairing_sequences: list[str],
+        nonpairing_sequences: list[str],
     ) -> None:
-        """Write sequences to a CSV file."""
+        """
+        Write MSA sequences to a CSV file with query sequence always first.
+        
+        Args:
+            csv_file_name: Path to the output CSV file
+            query_sequence: The query sequence (always written with key=0 as first row)
+            pairing_sequences: List of pairing MSA sequences (written with keys starting from 1)
+            nonpairing_sequences: List of non-pairing MSA sequences (written with key=-1)
+        """
         with csv_file_name.open(mode="w", newline="") as csv_file:
             writer = csv.writer(csv_file)
             writer.writerow(["key", "sequence"])  # Write header
-
-            if lines:
-                query_seq = lines[1]
-                writer.writerow([0, query_seq])  # Write the query sequence
-
-                # Process remaining sequences
-                j_id = 0
-                for line in lines[2:]:
-                    if line.startswith(">"):
-                        pass
-                    elif line:
-                        writer.writerow(
-                            [j_id + start_key, line]
-                        )  # Write sequence with incremented key
-                        j_id += 1
-
-    def _append_to_csv_file(self, csv_file_name: Path, lines: list[str]) -> None:
-        """Append sequences to an existing CSV file."""
-        with csv_file_name.open(mode="a", newline="") as csv_file:
-            writer = csv.writer(csv_file)
-
-            if lines:
-                # Process remaining sequences
-                for line in lines[2:]:
-                    if line.startswith(">"):
-                        pass
-                    elif line:
-                        writer.writerow([-1, line])  # Write sequence with key -1
+            
+            # ALWAYS write query sequence first with key=0
+            writer.writerow([0, query_sequence])
+            
+            # Write pairing sequences with positive keys starting from 1
+            for i, seq in enumerate(pairing_sequences, start=1):
+                if seq and not seq.startswith(">"):
+                    writer.writerow([i, seq])
+            
+            # Write non-pairing sequences with key=-1
+            for seq in nonpairing_sequences:
+                if seq and not seq.startswith(">"):
+                    writer.writerow([-1, seq])
 
     def _write_output_files(
         self,
         out_dir: Path,
         nonpairing_a3ms: dict[str, list[str]],
         pairing_a3ms: dict[str, list[str]],
+        query_sequences: dict[str, str],
     ) -> None:
-        """Write split sequences to output files."""
+        """
+        Write split sequences to output files.
+        
+        This method combines pairing and non-pairing MSAs into a single CSV file per chain,
+        ensuring the query sequence is always written first with key=0.
+        
+        Args:
+            out_dir: Output directory for CSV files
+            nonpairing_a3ms: Dictionary of non-pairing MSA sequences by chain
+            pairing_a3ms: Dictionary of pairing MSA sequences by chain
+            query_sequences: Dictionary of query sequences by chain
+        """
         out_dir.mkdir(exist_ok=True)
 
-        # Process pairing sequences and write to CSV
-        for i, (_, lines) in enumerate(pairing_a3ms.items()):
+        # Get all unique chain names from both dictionaries
+        all_chain_names = list(pairing_a3ms.keys())
+        
+        # Process each chain and write combined MSA to CSV
+        for i, chain_name in enumerate(all_chain_names):
             csv_file_name = out_dir / f"msa_{i}.csv"
-            self._write_csv_file(csv_file_name, lines, 1)
-
-        # Process non-pairing sequences and append to CSV
-        for i, (_, lines) in enumerate(nonpairing_a3ms.items()):
-            csv_file_name = out_dir / f"msa_{i}.csv"
-            self._append_to_csv_file(csv_file_name, lines)
+            
+            # Get sequences from both sources
+            pairing_lines = pairing_a3ms.get(chain_name, [])
+            nonpairing_lines = nonpairing_a3ms.get(chain_name, [])
+            
+            # Get the query sequence for this chain
+            query_seq = query_sequences.get(chain_name, "")
+            
+            # Validate that we have a query sequence
+            if not query_seq:
+                print(f"Warning: No query sequence found for chain {chain_name}")
+                continue
+            
+            # Extract sequences, skipping header at index 0
+            # Skip index 1 if it's identical to the query sequence
+            pairing_sequences = []
+            nonpairing_sequences = []
+            
+            # Process pairing sequences
+            for idx, line in enumerate(pairing_lines):
+                if idx == 0:  # Skip header
+                    continue
+                if idx == 1 and line == query_seq:  # Skip if identical to query
+                    continue
+                if line and not line.startswith(">"):
+                    pairing_sequences.append(line)
+            
+            # Process non-pairing sequences
+            for idx, line in enumerate(nonpairing_lines):
+                if idx == 0:  # Skip header
+                    continue
+                if idx == 1 and line == query_seq:  # Skip if identical to query
+                    continue
+                if line and not line.startswith(">"):
+                    nonpairing_sequences.append(line)
+            
+            # Write combined MSA to CSV with query sequence always first
+            self._write_msa_to_csv(
+                csv_file_name,
+                query_seq,
+                pairing_sequences,
+                nonpairing_sequences,
+            )
 
 
 def run_colabfold_search(config: LocalColabFoldConfig) -> str:
