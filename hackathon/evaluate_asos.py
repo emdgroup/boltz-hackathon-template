@@ -7,10 +7,9 @@ then calculates RMSD values for ligands using the Hungarian algorithm for optima
 """
 
 import os
-import sys
-import subprocess
 import argparse
 import numpy as np
+import pandas as pd
 from scipy.optimize import linear_sum_assignment
 from Bio import PDB
 import json
@@ -269,8 +268,23 @@ def save_results(rmsds, output_folder):
     output_file = os.path.join(output_folder, 'rmsd_results.json')
     with open(output_file, 'w') as f:
         json.dump(rmsds, f, indent=2)
-    print(f"Saved RMSD results to {output_file}")
+    print(f"Saved full RMSD results to {output_file}")
 
+    # CSV with top 1 model results
+    output_file = os.path.join(output_folder, 'rmsd_top1_results.csv')
+    df_top1 = pd.DataFrame([
+        {
+            "datapoint_id": key,
+            "pdb_id": value["pdb_id"],
+            "type": value["type"],
+            "top1_rmsd": value["rmsd"][0]
+        }
+        for key, value in rmsds.items()
+    ])
+    df_top1.to_csv(output_file, index=False)
+    print(f"Saved top 1 RMSD results to {output_file}")
+
+    return df_top1
 
 def main():
     parser = argparse.ArgumentParser(
@@ -331,7 +345,7 @@ def main():
 
     # Save results
     print("\n4. Saving results...")
-    save_results(rmsds, args.output_folder)
+    df_top1 = save_results(rmsds, args.output_folder)
 
     # Plot results
     print("\n5. Generating plots...")
@@ -339,6 +353,23 @@ def main():
 
     print("\n" + "=" * 80)
     print("Evaluation complete!")
+    print(f"Top 1 model RMSD summary:")
+    # all, orthosteric, allosteric
+    for ligand_type in [None, "orthosteric", "allosteric"]:
+        if ligand_type:
+            df_filtered = df_top1[df_top1['type'] == ligand_type]
+            label = ligand_type.capitalize()
+        else:
+            df_filtered = df_top1
+            label = "All"
+        
+        if not df_filtered.empty:
+            mean_rmsd = df_filtered['top1_rmsd'].mean()
+            median_rmsd = df_filtered['top1_rmsd'].median()
+            std_rmsd = df_filtered['top1_rmsd'].std()
+            print(f"{label} ligands - Mean RMSD: {mean_rmsd:.2f}, Median RMSD: {median_rmsd:.2f}, Std Dev: {std_rmsd:.2f}")
+        else:
+            print(f"No data for {label} ligands.")
     print("=" * 80)
 
 
