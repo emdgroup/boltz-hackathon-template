@@ -117,21 +117,47 @@ As a reference, one typical antibody-antigen complex with 5 diffusion samples an
 
 ## Validation Sets
 
-For both challenges we provide an evaluation set.
+For both challenges we provide a validation data set that you can use to test your contributions and track your progress.
 
-For the antibody-antigen complex challenge, we have 12 public PDB structures, all released after the cut-off date for Boltz training data.
-For the allosteric-orthosteric ligand challenge, we have 40 structures that were also used in the recent paper of Nittinger et. al [1].
+The validation set for the antibody-antigen complex challenge comprises of 12 public PDB structures, all released after the cut-off date for Boltz training data.
+The validation set for the allosteric-orthosteric ligand challenge comprises of 40 structures that were also used in the recent paper of Nittinger et. al [1].
 
-To run the prediction and evaluation for the antibody-antigen complex challenge, use the following command:
+To run the prediction for the antibody-antigen complex challenge, use:
 
 ```bash
-TODO
+python hackathon/predict_hackathon.py \
+    --input-jsonl hackathon_datasets/abag_public/abag_public_dataset_msa.jsonl \
+    --msa-dir hackathon_datasets/abag_public/msa/ \
+    --submission-dir SUBMISSION_DIR \
+    --intermediate-dir ./tmp/
 ```
 
-To run the prediction and evaluation for the allosteric-orthosteric ligand challenge, use the following command:
+To evaluate your predictions for the antibody-antigen complex challenge, use:
 
 ```bash
-TODO
+python hackathon/evaluate_abag.py \
+    --dataset-folder hackathon_datasets/abag_public/ \
+    --submission-folder SUBMISSION_FOLDER \
+    --output-folder ./abag_public_evaluation/
+```
+
+To run the prediction for the allosteric-orthosteric ligand challenge, use:
+
+```bash
+python hackathon/predict_hackathon.py \
+    --input-jsonl hackathon_datasets/asos_public/asos_public_dataset_msa.jsonl \
+    --msa-dir hackathon_datasets/asos_public/msa/ \
+    --submission-dir SUBMISSION_DIR \
+    --intermediate-dir ./tmp/
+```
+
+To evaluate your predictions for the allosteric-orthosteric ligand challenge, use:
+
+```bash
+python hackathon/evaluate_asos.py \
+	--dataset-folder hackathon_datasets/asos_public/ \
+	--submission-folder SUBMISSION_FOLDER \
+	--output-folder ./asos_public_evaluation/
 ```
 
 ## Submission Format 📦
