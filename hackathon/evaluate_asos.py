@@ -293,12 +293,12 @@ def main():
     )
     parser.add_argument(
         '--dataset-folder',
-        required=True,
+        required=False,
         help='Path to the dataset folder containing the JSONL file and ground_truth subdirectory'
     )
     parser.add_argument(
         '--dataset-file',
-        default='asos_public_dataset_msa.jsonl',
+        required=True,
         help='Name of the dataset JSONL file'
     )
     parser.add_argument(
@@ -331,6 +331,9 @@ def main():
 
     # Load dataset
     print("\n1. Loading dataset...")
+    if not args.dataset_folder:
+        args.dataset_folder = os.path.dirname(os.path.abspath(args.dataset_file))
+        
     dataset, ligand_info = load_dataset(args.dataset_folder, args.dataset_file)
     print(f"Found ligand information for {len(ligand_info)} datapoints")
 

@@ -12,18 +12,18 @@ from hackathon_api import Datapoint
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Parallel CAPRI-Q evaluation runner (Python port)")
-    parser.add_argument('--input-jsonl', type=str, default=str(Path.cwd() / 'inputs'), help='Path to input JSONL file')
-    parser.add_argument('--output-dir', type=str, default=str(Path.cwd() / 'outputs'), help='Directory to store output files')
-    parser.add_argument('--prediction-dir', type=str, default=str(Path.cwd() / 'predictions'), help='Directory containing prediction files')
+    parser.add_argument('--dataset-file', type=str, default=str(Path.cwd() / 'inputs'), help='Path to input JSONL file')
+    parser.add_argument('--output-folder', type=str, default=str(Path.cwd() / 'outputs'), help='Directory to store output files')
+    parser.add_argument('--submission-folder', type=str, default=str(Path.cwd() / 'predictions'), help='Directory containing prediction files')
     parser.add_argument('--njobs', type=int, default=50, help='Number of parallel jobs to run')
     parser.add_argument('--nsamples', type=int, default=5, help='Number of samples to evaluate per structure')
     return parser.parse_args()
 
 
 def run_evaluation(gt_dir, gt_structures: dict[str, Any], structure_name: str, i: int, args) -> Optional[pd.DataFrame]:
-    output_subdir = Path(args.output_dir) / f"{structure_name}_{i}"
+    output_subdir = Path(args.output_folder) / f"{structure_name}_{i}"
     output_subdir.mkdir(parents=True, exist_ok=True)
-    prediction_file = Path(args.prediction_dir) / structure_name / f"model_{i}.pdb"
+    prediction_file = Path(args.submission_folder) / structure_name / f"model_{i}.pdb"
     if not prediction_file.exists():
         print(f"No prediction file {prediction_file} found. Skipping.")
         return None
@@ -59,13 +59,27 @@ def run_evaluation(gt_dir, gt_structures: dict[str, Any], structure_name: str, i
         subprocess.run(docker_cmd, check=True)
     except subprocess.CalledProcessError as e:
         print(f"Docker run failed for {structure_name} model {i}. Error: {e}", file=sys.stderr)
-        return None
+        return pd.DataFrame({
+            'structure_name': [structure_name],
+            'structure_index': [i],
+            'nclash': [None],
+            'clash_fraction': [None],
+            'classification': ['error'],
+            'error': [str(e)]
+        })
 
     # load result file
     result_file = output_subdir / f"{structure_name}_{i}_results.txt"
     if not result_file.exists():
         print(f"No result file {result_file} found. Skipping.")
-        return None
+        return pd.DataFrame({
+            'structure_name': [structure_name],
+            'structure_index': [i],
+            'nclash': [None],
+            'clash_fraction': [None],
+            'classification': ['error'],
+            'error': ['Result file not found']
+        })
     
     df = pd.read_csv(result_file, sep='\\s+')
     df['clash_fraction'] = df['model'].str.replace("/", "").astype(float) / df['nclash']
@@ -82,9 +96,9 @@ def load_dataset(input_jsonl: str) -> list[Datapoint]:
 
 def main():
     args = parse_args()
-    input_jsonl = args.input_jsonl
+    input_jsonl = args.dataset_file
     dataset = load_dataset(input_jsonl)
-    gt_dir = Path(args.input_jsonl).parent / 'ground_truth'
+    gt_dir = Path(args.dataset_file).parent / 'ground_truth'
     result_dfs = []
     with ThreadPoolExecutor(max_workers=args.njobs) as executor:
         futures = []
@@ -98,7 +112,7 @@ def main():
             if result is not None:
                 result_dfs.append(result)
     combined_results = pd.concat(result_dfs, ignore_index=True)
-    combined_results.to_csv(Path(args.output_dir) / 'combined_results.csv', index=False)
+    combined_results.to_csv(Path(args.output_folder) / 'combined_results.csv', index=False)
 
     # select structure 0 and count "classification"
     print(combined_results[combined_results['structure_index'] == 0]["classification"].value_counts())
