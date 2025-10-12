@@ -50,10 +50,14 @@ if [[ -z "$DOCKER_IMAGE_TAG" || -z "$DATASET_PATH" || -z "$SUBMISSION_DIR" || -z
     show_help
 fi
 
+# Make sure submission directory exists
+mkdir -p "$SUBMISSION_DIR"
+
 # Run the docker container with the required mounts and arguments
 # set -x
 docker run --rm \
     --gpus ${CUDA_VISIBLE_DEVICES:+device=$CUDA_VISIBLE_DEVICES} ${CUDA_VISIBLE_DEVICES:-all} \
+    --network none \
     --mount type=bind,source=$HOME/.ssh/cacert.pem,target=/etc/ssl/certs/cacert.pem,readonly \
     -e REQUESTS_CA_BUNDLE=/etc/ssl/certs/cacert.pem \
     -e CURL_CA_BUNDLE=/etc/ssl/certs/cacert.pem \
@@ -65,4 +69,4 @@ docker run --rm \
     -v "${BOLTZ_CACHE_DIR}:/db/boltz:rw" \
     -it \
     "${DOCKER_IMAGE_TAG}" \
-    conda run -n boltz python predict_hackathon.py --input-jsonl "/app/dataset.jsonl" --msa-dir "/app/msa"
+    conda run -n boltz python hackathon/predict_hackathon.py --input-jsonl "/app/dataset.jsonl" --msa-dir "/app/msa"
