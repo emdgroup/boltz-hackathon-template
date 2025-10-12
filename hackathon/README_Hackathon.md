@@ -7,7 +7,7 @@ Please read these instructions carefully before you start.
 
 This repository is a fork of the [Boltz](https://github.com/jwohlwend/boltz) repository and has been modified for the hackathon to allow a straightforward evaluation of your contributions.
 
-## Setup
+## Setup ⚙️
 
 First, create a fork of the template repository!
 
@@ -21,7 +21,7 @@ conda activate boltz
 pip install -e .[cuda]
 ```
 
-## Quick Start
+## Quick Start ⚡️
 
 To participate in the hackathon:
 
@@ -45,7 +45,9 @@ Review the metrics to assess your improvements.
 
 4. **Iterate**: Refine your approach based on evaluation results and repeat!
 
-## Entrypoints for Participants
+5. **Submit**: Before the deadline, push your final code to your forked repository and fill out the [submission form](TBD).
+
+## Entrypoints for Participants 💻
 
 ### `hackathon/predict_hackathon.py`
 
@@ -130,7 +132,7 @@ If you need non-Python dependencies, you can add those in `environment.yml`.
 We strongly advice against adding non-Python dependencies that are not available through any public conda channel.
 If you still want to add them, please install them directly in your machine and make sure that you modify `Dockerfile` accordingly.
 
-## Evaluation Limits
+## Evaluation Limits ⏱️
 
 When evaluating your contributions your code will run in an environment with the following hardware specs:
 
@@ -141,7 +143,7 @@ When evaluating your contributions your code will run in an environment with the
 On this machine the full end-to-end prediction for a single datapoint, including pre-processing, Boltz prediction, post-processing, should complete within 15 minutes on average. 
 As a reference, one typical antibody-antigen complex with 5 diffusion samples and default settings takes around 80-90 seconds end-to-end on that kind of hardware.
 
-## Validation Sets
+## Validation Sets 🧪
 
 For both challenges we provide a validation data set that you can use to test your contributions and track your progress.
 
@@ -187,6 +189,19 @@ If you make deeper changes to the provided code, make sure your final prediction
     ├── model_0.pdb
     └── ...
 ```
+
+## Handing In Your Final Submission 🎉
+
+Before the deadline on **21st October 2025, 17:30 CEST / 11:30 EDT**, please submit your final code by pushing to your forked repository on GitHub. 
+Then fill out the [submission form](TBD) and enter
+
+- your group name
+- the link to your repository
+- the commit SHA you want us to evaluate (if not provided, we will evaluate the latest commit on the `main` branch)
+- the challenge you are submitting for (antibody-antigen complex prediction, allosteric-orthosteric ligand prediction)
+
+If you want to submit for both challenges, please fill out the form twice.
+You can use different commit SHAs for each challenge if you want.
 
 ## Need Help? 🆘
 
