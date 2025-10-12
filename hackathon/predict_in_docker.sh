@@ -58,6 +58,7 @@ mkdir -p "$SUBMISSION_DIR"
 docker run --rm \
     --gpus ${CUDA_VISIBLE_DEVICES:+device=$CUDA_VISIBLE_DEVICES} ${CUDA_VISIBLE_DEVICES:-all} \
     --network none \
+    --shm-size=16G \
     --mount type=bind,source=$HOME/.ssh/cacert.pem,target=/etc/ssl/certs/cacert.pem,readonly \
     -e REQUESTS_CA_BUNDLE=/etc/ssl/certs/cacert.pem \
     -e CURL_CA_BUNDLE=/etc/ssl/certs/cacert.pem \
