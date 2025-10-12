@@ -136,6 +136,26 @@ class A3MProcessor:
                     pairing_a3ms[chain_name].append(seq)
 
         return nonpairing_a3ms, pairing_a3ms
+    
+    def _get_query_sequences(self, 
+                             chain_names: list[str],
+                             pairing_a3ms: dict[str, list[str]],
+                             nonpairing_a3ms: dict[str, list[str]]) -> dict[str, str]:
+
+        query_sequences = {}
+        for chain_name in chain_names:
+            # Try to get query from pairing first, then non-pairing
+            pairing_lines = pairing_a3ms.get(chain_name, [])
+            nonpairing_lines = nonpairing_a3ms.get(chain_name, [])
+
+            if len(pairing_lines) > 1:
+                query_sequences[chain_name] = pairing_lines[1]
+            elif len(nonpairing_lines) > 1:
+                query_sequences[chain_name] = nonpairing_lines[1]
+            else:
+                query_sequences[chain_name] = ""
+
+        return query_sequences
 
     def split_sequences(self) -> None:
         """Split A3M file into pairing and non-pairing sequences."""
@@ -147,18 +167,7 @@ class A3MProcessor:
         )
 
         # Extract query sequences for each chain
-        query_sequences = {}
-        for chain_name in chain_names:
-            # Try to get query from pairing first, then non-pairing
-            pairing_lines = pairing_a3ms.get(chain_name, [])
-            nonpairing_lines = nonpairing_a3ms.get(chain_name, [])
-            
-            if len(pairing_lines) > 1:
-                query_sequences[chain_name] = pairing_lines[1]
-            elif len(nonpairing_lines) > 1:
-                query_sequences[chain_name] = nonpairing_lines[1]
-            else:
-                query_sequences[chain_name] = ""
+        query_sequences = self._get_query_sequences(chain_names, pairing_a3ms, nonpairing_a3ms)
 
         self._write_output_files(out_dir, nonpairing_a3ms, pairing_a3ms, query_sequences)
 
