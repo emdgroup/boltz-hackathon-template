@@ -19,6 +19,30 @@ conda activate boltz
 pip install -e .[cuda]
 ```
 
+## Quick Start
+
+To participate in the hackathon:
+
+1. **Modify the code**: Edit the functions in `hackathon/predict_hackathon.py`:
+   - `prepare_protein_complex()` or `prepare_protein_ligand()` - Customize input configurations and CLI arguments
+   - `post_process_protein_complex()` or `post_process_protein_ligand()` - Re-rank or post-process predictions
+   - You can also modify any Boltz source code in `src/boltz/` as needed
+
+2. **Run predictions**: Execute the prediction script on a validation dataset:
+   ```bash
+   python hackathon/predict_hackathon.py \
+       --input-jsonl hackathon_datasets/abag_public/abag_public_dataset_msa.jsonl \
+       --msa-dir hackathon_datasets/abag_public/msa/ \
+       --submission-dir ./my_predictions \
+       --intermediate-dir ./tmp/ \
+       --result-folder ./my_results
+   ```
+
+3. **Evaluate**: Results will be automatically computed and saved to the `--result-folder` directory. 
+Review the metrics to assess your improvements.
+
+4. **Iterate**: Refine your approach based on evaluation results and repeat!
+
 ## Entrypoints for Participants
 
 ### `hackathon/predict_hackathon.py`
@@ -161,10 +185,6 @@ If you make deeper changes to the provided code, make sure your final prediction
     ├── model_0.pdb
     └── ...
 ```
-
-## Directory Structure
-
-**TODO**
 
 ## Need Help? 🆘
 
