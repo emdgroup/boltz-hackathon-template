@@ -122,47 +122,33 @@ For both challenges we provide a validation data set that you can use to test yo
 The validation set for the antibody-antigen complex challenge comprises of 12 public PDB structures, all released after the cut-off date for Boltz training data.
 The validation set for the allosteric-orthosteric ligand challenge comprises of 40 structures that were also used in the recent paper of Nittinger et. al [1].
 
-To run the prediction for the antibody-antigen complex challenge, use:
+To run the prediction and evaluation for the antibody-antigen complex challenge, use:
 
 ```bash
 python hackathon/predict_hackathon.py \
     --input-jsonl hackathon_datasets/abag_public/abag_public_dataset_msa.jsonl \
     --msa-dir hackathon_datasets/abag_public/msa/ \
     --submission-dir SUBMISSION_DIR \
-    --intermediate-dir ./tmp/
+    --intermediate-dir ./tmp/ \
+    --result-folder RESULT_DIR
 ```
 
-To evaluate your predictions for the antibody-antigen complex challenge, use:
-
-```bash
-python hackathon/evaluate_abag.py \
-    --dataset-folder hackathon_datasets/abag_public/ \
-    --submission-folder SUBMISSION_FOLDER \
-    --output-folder ./abag_public_evaluation/
-```
-
-To run the prediction for the allosteric-orthosteric ligand challenge, use:
+To run the prediction and evaluation for the allosteric-orthosteric ligand challenge, use:
 
 ```bash
 python hackathon/predict_hackathon.py \
     --input-jsonl hackathon_datasets/asos_public/asos_public_dataset_msa.jsonl \
     --msa-dir hackathon_datasets/asos_public/msa/ \
     --submission-dir SUBMISSION_DIR \
-    --intermediate-dir ./tmp/
+    --intermediate-dir ./tmp/ \
+    --result-folder RESULT_DIR
 ```
-
-To evaluate your predictions for the allosteric-orthosteric ligand challenge, use:
-
-```bash
-python hackathon/evaluate_asos.py \
-	--dataset-folder hackathon_datasets/asos_public/ \
-	--submission-folder SUBMISSION_FOLDER \
-	--output-folder ./asos_public_evaluation/
-```
+In both cases, replace `SUBMISSION_DIR` with the path to a directory where you want to store your predictions and `RESULT_DIR` with the path to a directory where you want to store the evaluation results.
+If you do not provide `--result-folder`, the script will only run the predictions and not the evaluation.
 
 ## Submission Format 📦
 
-Your final predictions should be in:
+If you make deeper changes to the provided code, make sure your final predictions are organized in the following structure:
 ```
 {submission_dir}/
 ├── {datapoint_id_1}/

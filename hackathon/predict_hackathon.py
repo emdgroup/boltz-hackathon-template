@@ -77,7 +77,8 @@ def prepare_protein_ligand(datapoint_id: str, protein: Protein, ligands: list[Sm
     # will add contact constraints to the input_dict
 
     # Example: predict 5 structures
-    cli_args = ["--diffusion_samples", "5", '--use_msa_server']
+    cli_args = ["--diffusion_samples", "5"]
+    # cli_args.append('--use_msa_server')
     return [(input_dict, cli_args)]
 
 def post_process_protein_complex(datapoint: Datapoint, input_dicts: List[dict[str, Any]], cli_args_list: List[list[str]], prediction_dirs: List[Path]) -> List[Path]:
@@ -153,6 +154,8 @@ ap.add_argument("--intermediate-dir", type=Path, required=False, default=Path("h
                 help="Directory to place generated input YAML files and predictions")
 ap.add_argument("--group-id", type=str, required=False, default=None,
                 help="Group ID to set for submission directory (sets group rw access if specified)")
+ap.add_argument("--result-folder", type=Path, required=False, default=None,
+                help="Directory to save evaluation results. If set, will automatically run evaluation after predictions.")
 
 args = ap.parse_args()
 
@@ -286,6 +289,45 @@ def _load_datapoint(path: Path):
     with open(path) as f:
         return Datapoint.from_json(f.read())
 
+def _run_evaluation(input_file: str, task_type: str, submission_dir: Path, result_folder: Path):
+    """
+    Run the appropriate evaluation script based on task type.
+    
+    Args:
+        input_file: Path to the input JSON or JSONL file
+        task_type: Either "protein_complex" or "protein_ligand"
+        submission_dir: Directory containing prediction submissions
+        result_folder: Directory to save evaluation results
+    """
+    script_dir = Path(__file__).parent
+    
+    if task_type == "protein_complex":
+        eval_script = script_dir / "evaluate_capriq.py"
+        cmd = [
+            "python", str(eval_script),
+            "--dataset-file", input_file,
+            "--submission-folder", str(submission_dir),
+            "--output-folder", str(result_folder)
+        ]
+    elif task_type == "protein_ligand":
+        eval_script = script_dir / "evaluate_asos.py"
+        cmd = [
+            "python", str(eval_script),
+            "--dataset-file", input_file,
+            "--submission-folder", str(submission_dir),
+            "--output-folder", str(result_folder)
+        ]
+    else:
+        raise ValueError(f"Unknown task_type: {task_type}")
+    
+    print(f"\n{'=' * 80}")
+    print(f"Running evaluation for {task_type}...")
+    print(f"Command: {' '.join(cmd)}")
+    print(f"{'=' * 80}\n")
+    
+    subprocess.run(cmd, check=True)
+    print(f"\nEvaluation complete. Results saved to {result_folder}")
+
 def _process_jsonl(jsonl_path: str, msa_dir: Optional[Path] = None):
     """Process multiple datapoints from a JSONL file."""
     print(f"Processing JSONL file: {jsonl_path}")
@@ -321,10 +363,40 @@ def _process_json(json_path: str, msa_dir: Optional[Path] = None):
 
 def main():
     """Main entry point for the hackathon scaffold."""
+    # Determine task type from first datapoint for evaluation
+    task_type = None
+    input_file = None
+    
     if args.input_json:
+        input_file = args.input_json
         _process_json(args.input_json, args.msa_dir)
+        # Get task type from the single datapoint
+        try:
+            datapoint = _load_datapoint(Path(args.input_json))
+            task_type = datapoint.task_type
+        except Exception as e:
+            print(f"WARNING: Could not determine task type: {e}")
     elif args.input_jsonl:
+        input_file = args.input_jsonl
         _process_jsonl(args.input_jsonl, args.msa_dir)
+        # Get task type from first datapoint in JSONL
+        try:
+            with open(args.input_jsonl) as f:
+                first_line = f.readline().strip()
+                if first_line:
+                    first_datapoint = Datapoint.from_json(first_line)
+                    task_type = first_datapoint.task_type
+        except Exception as e:
+            print(f"WARNING: Could not determine task type: {e}")
+    
+    # Run evaluation if result folder is specified and task type was determined
+    if args.result_folder and task_type and input_file:
+        try:
+            _run_evaluation(input_file, task_type, args.submission_dir, args.result_folder)
+        except Exception as e:
+            print(f"WARNING: Evaluation failed: {e}")
+            import traceback
+            traceback.print_exc()
 
 if __name__ == "__main__":
     main()
