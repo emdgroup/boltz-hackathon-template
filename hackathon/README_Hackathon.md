@@ -199,6 +199,7 @@ Then fill out the [submission form](TBD) and enter
 - the link to your repository
 - the commit SHA you want us to evaluate (if not provided, we will evaluate the latest commit on the `main` branch)
 - the challenge you are submitting for (antibody-antigen complex prediction, allosteric-orthosteric ligand prediction)
+- link to a short description of your method (e.g., a README file in your repository or a separate document)
 
 If you want to submit for both challenges, please fill out the form twice.
 You can use different commit SHAs for each challenge if you want.
