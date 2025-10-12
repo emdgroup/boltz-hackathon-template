@@ -9,10 +9,12 @@ This repository is a fork of the [Boltz](https://github.com/jwohlwend/boltz) rep
 
 ## Setup
 
+First, create a fork of the template repository!
+
 Different from the original installation instructions, please set up your environment by first using conda/mamba to create the environment and then use pip to install the Boltz package.
 
 ```
-git clone https://github.com/emdgroup/boltz-hackathon-template.git
+git clone YOUR_FORKED_REPO_URL
 cd boltz
 conda env create -f environment.yml --name boltz
 conda activate boltz
