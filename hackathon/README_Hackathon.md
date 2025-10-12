@@ -143,6 +143,8 @@ When evaluating your contributions your code will run in an environment with the
 On this machine the full end-to-end prediction for a single datapoint, including pre-processing, Boltz prediction, post-processing, should complete within 15 minutes on average. 
 As a reference, one typical antibody-antigen complex with 5 diffusion samples and default settings takes around 80-90 seconds end-to-end on that kind of hardware.
 
+To protect our proprietary data and ensure a fair competition, the evaluation environment will have **no internet access**.
+
 ## Validation Sets 🧪
 
 For both challenges we provide a validation data set that you can use to test your contributions and track your progress.
