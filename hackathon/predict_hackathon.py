@@ -29,7 +29,7 @@ def prepare_protein_complex(datapoint_id: str, proteins: List[Protein], input_di
     """
     # Please note:
     # `proteins`` will contain 3 chains
-    # H,L: heavy and light chain of the Fab region
+    # H,L: heavy and light chain of the Fv or Fab region
     # A: the antigen
     #
     # you can modify input_dict to change the input yaml file going into the prediction, e.g.
@@ -62,7 +62,7 @@ def prepare_protein_ligand(datapoint_id: str, protein: Protein, ligands: list[Sm
         List of tuples of (final input dict, list of CLI args). Each tuple represents a separate configuration to run.
     """
     # Please note:
-    # `protein` is a single-chain target protein sequence with id T
+    # `protein` is a single-chain target protein sequence with id A
     # `ligands` is a list of small molecule/ligand objects with unknown binding sites
     # you can modify input_dict to change the input yaml file going into the prediction, e.g.
     # ```
