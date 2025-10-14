@@ -173,8 +173,27 @@ python hackathon/predict_hackathon.py \
     --intermediate-dir ./tmp/ \
     --result-folder RESULT_DIR
 ```
+
 In both cases, replace `SUBMISSION_DIR` with the path to a directory where you want to store your predictions and `RESULT_DIR` with the path to a directory where you want to store the evaluation results.
 If you do not provide `--result-folder`, the script will only run the predictions and not the evaluation.
+
+If you just want to run the evaluation on already existing predictions:
+
+```bash
+python hackathon/evaluate_abag.py \
+    --dataset-file hackathon_datasets/abag_public/abag_public_dataset_msa.jsonl \
+    --submission-folder SUBMISSION_DIR \
+    --output-folder ./abag_public_evaluation/
+```
+
+or for the allosteric-orthosteric ligand challenge:
+
+```bash
+python hackathon/evaluate_asos.py \
+    --dataset-file hackathon_datasets/asos_public/asos_public_dataset_msa.jsonl \
+    --submission-folder SUBMISSION_DIR \
+    --output-folder ./asos_public_evaluation/
+```
 
 ## Submission Format 📦
 
