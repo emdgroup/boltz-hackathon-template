@@ -124,7 +124,6 @@ def load_dataset(dataset_folder, dataset_file):
                 'ccd': ligand['ccd'],
                 'chain_prot': ligand['chain'],
                 'chain_lig': ligand.get("ligand_chain") or ligand["ligand_id"],  # Default to "L" if not provided
-                'pdb_id': ligand_id.split('_')[0]
             })
 
     return dataset, ligand_info
@@ -201,9 +200,8 @@ def calculate_rmsds(dataset, ligand_info, tempfolder):
                     pred_file = os.path.join(tempfolder, f"{datapoint['datapoint_id']}_model_{model}.pdb")
                     rmsds_ligand.append(get_ligand_rmsd(exp_file, pred_file, ligand["ccd"], "LIG"))
 
-                rmsds[f"{datapoint['datapoint_id']}_{ligand['ccd']}_{ligand['type']}"] = {
+                rmsds[f"{datapoint['datapoint_id']}"] = {
                     "rmsd": rmsds_ligand,
-                    "pdb_id": ligand['pdb_id'],
                     "type": ligand['type']
                 }
 
@@ -215,15 +213,15 @@ def calculate_rmsds(dataset, ligand_info, tempfolder):
     return rmsds
 
 
-def plot_results(rmsds, output_folder):
+def plot_results(rmsds, result_folder):
     """
     Create boxplots for orthosteric and allosteric ligand RMSD values.
     
     Args:
         rmsds: Dictionary of RMSD values
-        output_folder: Folder to save plots
+        result_folder: Folder to save plots
     """
-    os.makedirs(output_folder, exist_ok=True)
+    os.makedirs(result_folder, exist_ok=True)
     
     # Create a horizontal boxplot for orthosteric ligands
     rmsd_subset = {key: value["rmsd"] for key, value in rmsds.items() if value["type"] == "orthosteric"}
@@ -236,9 +234,9 @@ def plot_results(rmsds, output_folder):
         plt.xlabel('RMSD Values')
         plt.title('Orthosteric Ligand RMSD Values')
         plt.tight_layout()
-        plt.savefig(os.path.join(output_folder, 'orthosteric_rmsd.png'), dpi=300, bbox_inches='tight')
+        plt.savefig(os.path.join(result_folder, 'orthosteric_rmsd.png'), dpi=300, bbox_inches='tight')
         plt.close()
-        print(f"Saved orthosteric RMSD plot to {output_folder}/orthosteric_rmsd.png")
+        print(f"Saved orthosteric RMSD plot to {result_folder}/orthosteric_rmsd.png")
 
     # Create a horizontal boxplot for allosteric ligands
     rmsd_subset = {key: value["rmsd"] for key, value in rmsds.items() if value["type"] == "allosteric"}
@@ -251,40 +249,43 @@ def plot_results(rmsds, output_folder):
         plt.xlabel('RMSD Values')
         plt.title('Allosteric Ligand RMSD Values')
         plt.tight_layout()
-        plt.savefig(os.path.join(output_folder, 'allosteric_rmsd.png'), dpi=300, bbox_inches='tight')
+        plt.savefig(os.path.join(result_folder, 'allosteric_rmsd.png'), dpi=300, bbox_inches='tight')
         plt.close()
-        print(f"Saved allosteric RMSD plot to {output_folder}/allosteric_rmsd.png")
+        print(f"Saved allosteric RMSD plot to {result_folder}/allosteric_rmsd.png")
 
 
-def save_results(rmsds, output_folder):
+def save_results(rmsds, result_folder):
     """
     Save RMSD results to a JSON file.
     
     Args:
         rmsds: Dictionary of RMSD values
-        output_folder: Folder to save results
+        result_folder: Folder to save results
     """
-    os.makedirs(output_folder, exist_ok=True)
-    output_file = os.path.join(output_folder, 'rmsd_results.json')
-    with open(output_file, 'w') as f:
-        json.dump(rmsds, f, indent=2)
-    print(f"Saved full RMSD results to {output_file}")
+    os.makedirs(result_folder, exist_ok=True)
 
-    # CSV with top 1 model results
-    output_file = os.path.join(output_folder, 'rmsd_top1_results.csv')
-    df_top1 = pd.DataFrame([
+    # CSV with combined results
+    output_file = os.path.join(result_folder, 'combined_results.csv')
+    df_metrics = pd.DataFrame([
         {
             "datapoint_id": key,
-            "pdb_id": value["pdb_id"],
             "type": value["type"],
-            "top1_rmsd": value["rmsd"][0]
+            "top1_rmsd": value["rmsd"][0],
+            "top5_mean_rmsd": np.mean(value["rmsd"][:5]),
+            "top5_min_rmsd": np.min(value["rmsd"][:5]),
+            "rmsd_under_2A": any(rmsd < 2.0 for rmsd in value["rmsd"][:5]),
+            "rmsd_model_0": value["rmsd"][0],
+            "rmsd_model_1": value["rmsd"][1],
+            "rmsd_model_2": value["rmsd"][2],
+            "rmsd_model_3": value["rmsd"][3],
+            "rmsd_model_4": value["rmsd"][4],
         }
         for key, value in rmsds.items()
     ])
-    df_top1.to_csv(output_file, index=False)
-    print(f"Saved top 1 RMSD results to {output_file}")
+    df_metrics.to_csv(output_file, index=False)
+    print(f"Saved metrics results to {output_file}")
 
-    return df_top1
+    return df_metrics
 
 def main():
     parser = argparse.ArgumentParser(
@@ -307,7 +308,7 @@ def main():
         help='Path to the submission folder containing predicted structures'
     )
     parser.add_argument(
-        '--output-folder',
+        '--result-folder',
         default='./evaluation_results',
         help='Path to save evaluation results and plots'
     )
@@ -325,7 +326,7 @@ def main():
     print(f"Dataset folder: {args.dataset_folder}")
     print(f"Dataset file: {args.dataset_file}")
     print(f"Submission folder: {args.submission_folder}")
-    print(f"Output folder: {args.output_folder}")
+    print(f"Result folder: {args.result_folder}")
     print(f"Temp folder: {args.temp_folder}")
     print("=" * 80)
 
@@ -348,11 +349,11 @@ def main():
 
     # Save results
     print("\n4. Saving results...")
-    df_top1 = save_results(rmsds, args.output_folder)
+    df_metrics = save_results(rmsds, args.result_folder)
 
     # Plot results
     print("\n5. Generating plots...")
-    plot_results(rmsds, args.output_folder)
+    plot_results(rmsds, args.result_folder)
 
     print("\n" + "=" * 80)
     print("Evaluation complete!")
@@ -360,17 +361,19 @@ def main():
     # all, orthosteric, allosteric
     for ligand_type in [None, "orthosteric", "allosteric"]:
         if ligand_type:
-            df_filtered = df_top1[df_top1['type'] == ligand_type]
+            df_filtered = df_metrics[df_metrics['type'] == ligand_type]
             label = ligand_type.capitalize()
         else:
-            df_filtered = df_top1
+            df_filtered = df_metrics
             label = "All"
         
         if not df_filtered.empty:
-            mean_rmsd = df_filtered['top1_rmsd'].mean()
-            median_rmsd = df_filtered['top1_rmsd'].median()
-            std_rmsd = df_filtered['top1_rmsd'].std()
-            print(f"{label} ligands - Mean RMSD: {mean_rmsd:.2f}, Median RMSD: {median_rmsd:.2f}, Std Dev: {std_rmsd:.2f}")
+            mean_top1_rmsd = df_filtered['top1_rmsd'].mean()
+            mean_top5_min_rmsd = df_filtered['top5_min_rmsd'].mean()
+            num_below_2A = df_filtered['rmsd_under_2A'].sum()
+            total = len(df_filtered)
+            print(f"{label} ligands - Mean Top 1 RMSD: {mean_top1_rmsd:.2f}, Mean Top 5 Min RMSD: {mean_top5_min_rmsd:.2f}, "
+                  f"RMSD < 2Å in Top 5: {num_below_2A}/{total} ({(num_below_2A/total)*100:.1f}%)")
         else:
             print(f"No data for {label} ligands.")
     print("=" * 80)

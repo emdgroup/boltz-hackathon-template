@@ -13,7 +13,7 @@ from hackathon_api import Datapoint
 def parse_args():
     parser = argparse.ArgumentParser(description="Parallel CAPRI-Q evaluation runner (Python port)")
     parser.add_argument('--dataset-file', type=str, default=str(Path.cwd() / 'inputs'), help='Path to input JSONL file')
-    parser.add_argument('--output-folder', type=str, default=str(Path.cwd() / 'outputs'), help='Directory to store output files')
+    parser.add_argument('--result-folder', type=str, default=str(Path.cwd() / 'outputs'), help='Directory to store result files')
     parser.add_argument('--submission-folder', type=str, default=str(Path.cwd() / 'predictions'), help='Directory containing prediction files')
     parser.add_argument('--njobs', type=int, default=50, help='Number of parallel jobs to run')
     parser.add_argument('--nsamples', type=int, default=5, help='Number of samples to evaluate per structure')
@@ -21,7 +21,7 @@ def parse_args():
 
 
 def run_evaluation(gt_dir, gt_structures: dict[str, Any], structure_name: str, i: int, args) -> Optional[pd.DataFrame]:
-    output_subdir = Path(args.output_folder) / f"{structure_name}_{i}"
+    output_subdir = Path(args.result_folder) / f"{structure_name}_{i}"
     output_subdir.mkdir(parents=True, exist_ok=True)
     prediction_file = Path(args.submission_folder) / structure_name / f"model_{i}.pdb"
     if not prediction_file.exists():
@@ -112,10 +112,15 @@ def main():
             if result is not None:
                 result_dfs.append(result)
     combined_results = pd.concat(result_dfs, ignore_index=True)
-    combined_results.to_csv(Path(args.output_folder) / 'combined_results.csv', index=False)
+    combined_results.to_csv(Path(args.result_folder) / 'combined_results.csv', index=False)
 
     # select structure 0 and count "classification"
     print(combined_results[combined_results['structure_index'] == 0]["classification"].value_counts())
+
+    # print number of successful top 1 predictions
+    successful_top1 = combined_results[combined_results['structure_index'] == 0]
+    successful_top1 = successful_top1[successful_top1['classification'].isin(['high', 'medium', 'acceptable'])]
+    print(f"Number of successful top 1 predictions: {len(successful_top1)} out of {len(dataset)}")
     
     print("All evaluations completed.")
 

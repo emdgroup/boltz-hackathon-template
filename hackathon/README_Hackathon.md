@@ -33,7 +33,7 @@ To participate in the hackathon:
 2. **Run predictions**: Execute the prediction script on a validation dataset:
    ```bash
    python hackathon/predict_hackathon.py \
-       --input-jsonl hackathon_datasets/abag_public/abag_public_dataset_msa.jsonl \
+       --input-jsonl hackathon_datasets/abag_public/abag_public_dataset.jsonl \
        --msa-dir hackathon_datasets/abag_public/msa/ \
        --submission-dir ./my_predictions \
        --intermediate-dir ./tmp/ \
@@ -149,51 +149,73 @@ To protect our proprietary data and ensure a fair competition, the evaluation en
 
 For both challenges we provide a validation data set that you can use to test your contributions and track your progress.
 
-The validation set for the antibody-antigen complex challenge comprises of 12 public PDB structures, all released after the cut-off date for Boltz training data.
-The validation set for the allosteric-orthosteric ligand challenge comprises of 40 structures that were also used in the recent paper of Nittinger et. al [1].
+### Antibody-Antigen Complex Prediction Challenge
 
-To run the prediction and evaluation for the antibody-antigen complex challenge, use:
+The validation set for the antibody-antigen complex challenge comprises of 12 public PDB structures, all released after the cut-off date for Boltz training data.
+
+To run the prediction and evaluation, use:
 
 ```bash
 python hackathon/predict_hackathon.py \
-    --input-jsonl hackathon_datasets/abag_public/abag_public_dataset_msa.jsonl \
+    --input-jsonl hackathon_datasets/abag_public/abag_public_dataset.jsonl \
     --msa-dir hackathon_datasets/abag_public/msa/ \
     --submission-dir SUBMISSION_DIR \
     --intermediate-dir ./tmp/ \
     --result-folder RESULT_DIR
 ```
 
-To run the prediction and evaluation for the allosteric-orthosteric ligand challenge, use:
-
-```bash
-python hackathon/predict_hackathon.py \
-    --input-jsonl hackathon_datasets/asos_public/asos_public_dataset_msa.jsonl \
-    --msa-dir hackathon_datasets/asos_public/msa/ \
-    --submission-dir SUBMISSION_DIR \
-    --intermediate-dir ./tmp/ \
-    --result-folder RESULT_DIR
-```
-
-In both cases, replace `SUBMISSION_DIR` with the path to a directory where you want to store your predictions and `RESULT_DIR` with the path to a directory where you want to store the evaluation results.
+Replace `SUBMISSION_DIR` with the path to a directory where you want to store your predictions and `RESULT_DIR` with the path to a directory where you want to store the evaluation results.
 If you do not provide `--result-folder`, the script will only run the predictions and not the evaluation.
 
 If you just want to run the evaluation on already existing predictions:
 
 ```bash
 python hackathon/evaluate_abag.py \
-    --dataset-file hackathon_datasets/abag_public/abag_public_dataset_msa.jsonl \
+    --dataset-file hackathon_datasets/abag_public/abag_public_dataset.jsonl \
     --submission-folder SUBMISSION_DIR \
-    --output-folder ./abag_public_evaluation/
+    --result-folder ./abag_public_evaluation/
 ```
 
-or for the allosteric-orthosteric ligand challenge:
+The evaluation script will compute the Capri-Q docking assessment classification scores (high, medium, acceptable, incorrect, error) for each of your top 5 predictions per data point.
+It will then print the distribution of classifications for the top 1 predictions across all data points.
+Additionally, it will compute the number of "successful" predictions, i.e., the number of data points for which the top 1 prediction is classified as "acceptable" or better.
+You will find more stats in a file `combined_results.csv` in the result folder.
+
+The winner of this challenge will be the team with the highest number of successful top 1 predictions on our *internal* test set. 
+Ties are broken by looking at the number of predictions with “high” classification, then with “medium” classification and finally with “acceptable” classification.
+
+### Allosteric-Orthosteric Ligand Prediction Challenge
+
+The validation set for the allosteric-orthosteric ligand challenge comprises of 40 structures that were also used in the recent paper of Nittinger et. al [1].
+
+To run the prediction and evaluation, use:
+
+```bash
+python hackathon/predict_hackathon.py \
+    --input-jsonl hackathon_datasets/asos_public/asos_public_dataset.jsonl \
+    --msa-dir hackathon_datasets/asos_public/msa/ \
+    --submission-dir SUBMISSION_DIR \
+    --intermediate-dir ./tmp/ \
+    --result-folder RESULT_DIR
+```
+
+Replace `SUBMISSION_DIR` with the path to a directory where you want to store your predictions and `RESULT_DIR` with the path to a directory where you want to store the evaluation results.
+If you do not provide `--result-folder`, the script will only run the predictions and not the evaluation.
+
+If you just want to run the evaluation on already existing predictions:
 
 ```bash
 python hackathon/evaluate_asos.py \
-    --dataset-file hackathon_datasets/asos_public/asos_public_dataset_msa.jsonl \
+    --dataset-file hackathon_datasets/asos_public/asos_public_dataset.jsonl \
     --submission-folder SUBMISSION_DIR \
-    --output-folder ./asos_public_evaluation/
+    --result-folder ./asos_public_evaluation/
 ```
+
+The evaluation script will compute the ligand RMSD for each of your top 5 predictions per data point and print the mean of the top 1 RMSDs across all data points, just the allosteric data points, and just the orthosteric data points.
+Additionally, it will compute the mean of the minimum RMSDs in the top 5 predictions and the number of data points with minimum RMSD < 2Å in the top 5 predictions.
+You will find more stats in a file `combined_results.csv` in the result folder.
+
+The winner of this challenge will be the team with the lowest mean RMSD of the top 1 predictions on our *internal* test set.
 
 ## Submission Format 📦
 
