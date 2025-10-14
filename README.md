@@ -11,6 +11,9 @@
 
 ![](docs/boltz1_pred_figure.png)
 
+## Hackathon Instructions
+
+Please refer to the [hackathon README](hackathon/README_Hackathon.md) for instructions on how to participate in the Boltz hackathon.
 
 ## Introduction
 
