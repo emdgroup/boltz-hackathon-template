@@ -53,11 +53,16 @@ Review the metrics to assess your improvements.
 
 We will evaluate your contributions by calling `hackathon/predict_hackathon.py` that will do the following three main steps for each data point of a dataset: 
 
-- generate input yaml files and CLI arguments
-- call Boltz
-- move predicted structures to a submission folder
+- generate one or multiple combinations of input yaml file and CLI argument
+- call Boltz with each combination
+- post-process and rank the predictions from all combinations
+- store the top 5 final ranked predictions in the submission directory
 
-Inside `hackathon/predict_hackathon.py`, you can modify the following functions for the antibody-antigen complex prediction challenge:
+You can modify steps 1 and 3 by editing the functions in `hackathon/predict_hackathon.py`.
+
+#### Modifying step 1: Generating input yaml files and CLI arguments
+
+To adapt step 1 modify the following function for the antibody-antigen complex prediction challenge (the allosteric-orthosteric ligand prediction challenge is similar):
 
 `def prepare_protein_complex(datapoint_id: str, proteins: List[Protein], input_dict: dict, msa_dir: Optional[Path] = None) -> List[tuple[dict, List[str]]]:`
 
@@ -68,7 +73,13 @@ This function gets as input:
 - `input_dict`: A pre-filled dictionary containing the YAML definition for that data point
 - `msa_dir`: The directory with the MSA files
 
-This function should output a **list of tuples**, where each tuple contains:
+Each protein has attributes 
+
+- `id`: The chain ID of the protein
+- `sequence`: The amino acid sequence of the protein
+- `msa`: The name of the MSA file within `msa_dir`
+
+The function should return a **list of tuples**, where each tuple contains:
 
 - A modified `input_dict` with any changes made during preparation
 - A list of CLI arguments that should be passed to Boltz for this configuration.
@@ -77,7 +88,12 @@ By returning multiple tuples, you can run Boltz with different configurations fo
 
 You can modify this function, e.g., to tailor the CLI args like changing the number of diffusion samples or recycling steps. Or you could add constraints to the yaml file through modifications to the `input_dict`.
 
+#### Step 2: Running Boltz
+
 With the provided information, the script will then call Boltz once for each configuration. 
+
+#### Modifying step 3: Post-processing and ranking predictions
+
 Afterwards, the following function gets called:
 
 `def post_process_protein_complex(datapoint: Datapoint, input_dicts: List[dict[str, Any]], cli_args_list: List[list[str]], prediction_dirs: List[Path]) -> List[Path]:` 
@@ -93,33 +109,25 @@ The order is important!
 The first path will be your top 1 prediction, and we will evaluate up to 5 predictions for each data point.
 You can use `post_process_protein_complex`, e.g., to modify, combine or re-rank the predicted structures from multiple configurations.
 
+
+#### Allosteric-orthosteric ligand prediction challenge
+
 For the allosteric-orthosteric ligand challenge, there are similar functions:
 
 `def prepare_protein_ligand(datapoint_id: str, protein: Protein, ligands: list[SmallMolecule], input_dict: dict, msa_dir: Optional[Path] = None) -> List[tuple[dict, List[str]]]:`
 
+Here, `protein` is a single protein object and `ligands` is a list of small molecule objects.
+Each small molecule has attributes:
+- `id`: The ID of the small molecule
+- `smiles`: The SMILES string of the small molecule
+
 This function also returns a **list of tuples** to support multiple configurations per datapoint.
 
-and
+For post-processing and re-ranking, use the function
 
 `def post_process_protein_ligand(datapoint: Datapoint, input_dicts: List[dict[str, Any]], cli_args_list: List[list[str]], prediction_dirs: List[Path]) -> List[Path]:`
 
 This function receives lists of configurations and returns a list of **Path objects** pointing to the ranked PDB files.
-
-These functions serve as quick start entrypoints. 
-Feel free to modify any other part of `hackathon/predict_hackathon.py` as long as the final predictions are stored like
-
-```
-{submission_dir}/
-├── {datapoint_id_1}/
-│   ├── model_0.pdb
-│   ├── model_1.pdb
-│   ├── model_2.pdb
-│   ├── model_3.pdb
-│   └── model_4.pdb
-└── {datapoint_id_2}/
-    ├── model_0.pdb
-    └── ...
-```
 
 ### Boltz code
 
