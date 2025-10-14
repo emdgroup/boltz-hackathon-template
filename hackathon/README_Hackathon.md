@@ -1,11 +1,11 @@
-# Boltz Hackathon Template 🧬
+# M-Boltz Hackathon Template 🧬
 
-Welcome to the Boltz Hackathon!
+Welcome to the M-Boltz hackathon!
 It is great to have you here!
-This template provides a scaffold for participating in the antibody-antigen complex prediction challenge and the allosteric-orthosteric ligand challenge.
-Please read these instructions carefully before you start.
 
-This repository is a fork of the [Boltz](https://github.com/jwohlwend/boltz) repository and has been modified for the hackathon to allow a straightforward evaluation of your contributions.
+This repository is a fork of the [Boltz](https://github.com/jwohlwend/boltz) repository and has been modified for the M-Boltz hackathon to allow a straightforward evaluation of your contributions for the antibody-antigen complex prediction challenge and the allosteric-orthosteric ligand challenge.
+
+Please read these instructions carefully before you start.
 
 ## Setup ⚙️
 
