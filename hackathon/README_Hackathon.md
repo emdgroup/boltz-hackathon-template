@@ -255,6 +255,14 @@ Then fill out the [submission form](TBD) and enter
 If you want to submit for both challenges, please fill out the form twice.
 You can use different commit SHAs for each challenge if you want.
 
+Before submitting, we advise you to make sure that the following steps work in your repository:
+
+- check out a fresh clone of your repository
+- create the conda environment and install the dependencies
+- run the prediction and evaluation on the validation set
+- check that the submission format is correct
+- check that the Docker image builds successfully (run `docker build -t boltz-hackathon .` in the root of your repository)
+
 ## Need Help? 🆘
 
 **TODO**
