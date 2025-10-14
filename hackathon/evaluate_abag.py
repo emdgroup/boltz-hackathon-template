@@ -115,12 +115,17 @@ def main():
     combined_results.to_csv(Path(args.result_folder) / 'combined_results.csv', index=False)
 
     # select structure 0 and count "classification"
-    print(combined_results[combined_results['structure_index'] == 0]["classification"].value_counts())
+    nsuccessful = 0
+    good_classes = ['high', 'medium', 'acceptable']
+    bad_classes = ['incorrect', 'error']
+    for classification in good_classes + bad_classes:
+        n = len(combined_results[(combined_results['structure_index'] == 0) & (combined_results['classification'].str.contains(classification))])
+        if classification in good_classes:
+            nsuccessful += n
+        print(f"Number of {classification} classifications in top 1: {n}")
 
     # print number of successful top 1 predictions
-    successful_top1 = combined_results[combined_results['structure_index'] == 0]
-    successful_top1 = successful_top1[successful_top1['classification'].isin(['high', 'medium', 'acceptable'])]
-    print(f"Number of successful top 1 predictions: {len(successful_top1)} out of {len(dataset)}")
+    print(f"Number of successful top 1 predictions: {nsuccessful} out of {len(dataset)}")
     
     print("All evaluations completed.")
 
