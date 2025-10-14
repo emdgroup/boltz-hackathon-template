@@ -123,7 +123,7 @@ def load_dataset(dataset_folder, dataset_file):
                 'type': ligand['type'],
                 'ccd': ligand['ccd'],
                 'chain_prot': ligand['chain'],
-                'chain_lig': ligand['ligand_id'],
+                'chain_lig': ligand.get("ligand_chain") or ligand["ligand_id"],  # Default to "L" if not provided
                 'pdb_id': ligand_id.split('_')[0]
             })
 
@@ -148,7 +148,7 @@ def align_structures(dataset, ligand_info, dataset_folder, submission_folder, te
     # Generate PyMOL alignment script
     for datapoint in dataset:
         datapoint_id = datapoint['datapoint_id']
-        pdb_id = datapoint_id.split('_')[0]
+        gt_structure = datapoint['ground_truth']["structure"]
         keep = []
         for chain in ligand_info[datapoint_id]:
             keep.append(chain["chain_prot"])
@@ -156,7 +156,7 @@ def align_structures(dataset, ligand_info, dataset_folder, submission_folder, te
 
         keep_selection = "+".join(keep)
         with open(os.path.join(tempfolder, "align.pml"), "a") as a:
-            a.write(f"load {dataset_folder}/ground_truth/{pdb_id.lower()}_chain_subset.cif, exp\n")
+            a.write(f"load {dataset_folder}/ground_truth/{gt_structure}, exp\n")
             a.write(f"sele not chain {keep_selection}\n")
             a.write(f"remove sele\n")
             for model in range(5):
