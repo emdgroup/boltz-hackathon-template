@@ -265,10 +265,11 @@ Before submitting, we advise you to make sure that the following steps work in y
 
 ## Need Help? 🆘
 
-**TODO**
+If you are on-site feel free to ask any of the organizers or your fellow participants for help.
+If you are joining virtually, please reach out on Slack in the `#m-boltz-hackathon` channel.
 
 ## References
 
 1. Nittinger, Eva, et al. "Co-folding, the future of docking – prediction of allosteric and orthosteric ligands." Artificial Intelligence in the Life Sciences, vol. 8, 2025, p. 100136. Elsevier,
 
-Good luck! 🚀
+Good luck, have fun! 🚀
