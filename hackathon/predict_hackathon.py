@@ -302,12 +302,12 @@ def _run_evaluation(input_file: str, task_type: str, submission_dir: Path, resul
     script_dir = Path(__file__).parent
     
     if task_type == "protein_complex":
-        eval_script = script_dir / "evaluate_capriq.py"
+        eval_script = script_dir / "evaluate_abag.py"
         cmd = [
             "python", str(eval_script),
             "--dataset-file", input_file,
             "--submission-folder", str(submission_dir),
-            "--output-folder", str(result_folder)
+            "--result-folder", str(result_folder)
         ]
     elif task_type == "protein_ligand":
         eval_script = script_dir / "evaluate_asos.py"
@@ -315,7 +315,7 @@ def _run_evaluation(input_file: str, task_type: str, submission_dir: Path, resul
             "python", str(eval_script),
             "--dataset-file", input_file,
             "--submission-folder", str(submission_dir),
-            "--output-folder", str(result_folder)
+            "--result-folder", str(result_folder)
         ]
     else:
         raise ValueError(f"Unknown task_type: {task_type}")
