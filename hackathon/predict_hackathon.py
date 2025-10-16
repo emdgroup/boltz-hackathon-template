@@ -183,20 +183,15 @@ def _prefill_input_dict(datapoint_id: str, proteins: Iterable[Protein], ligands:
                 "msa": msa_relative_path
             }
         }
-        if getattr(p, "modifications", None) and p.modifications:
-            entry["protein"]["modifications"] = p.modifications
         seqs.append(entry)
     if ligands:
         def _format_ligand(ligand: SmallMolecule) -> dict:
             output =  {
                 "ligand": {
                     "id": ligand.id,
+                    "smiles": ligand.smiles
                 }
             }
-            if ligand.ccd:
-                output["ligand"]["ccd"] = ligand.ccd
-            else:
-                output["ligand"]["smiles"] = ligand.smiles
             return output
         
         for ligand in ligands:

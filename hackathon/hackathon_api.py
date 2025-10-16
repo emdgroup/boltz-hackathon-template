@@ -22,7 +22,6 @@ class Protein:
     id: str
     sequence: str
     msa: Optional[str] = None  # A3M path (always provided for hackathon)
-    modifications: Optional[Any] = field(default=None)
 
 
 @dataclass_json
@@ -32,7 +31,6 @@ class SmallMolecule:
 
     id: str
     smiles: Optional[str] = None  # SMILES string for the ligand
-    ccd: Optional[str] = None  # CCD
 
 
 @dataclass_json
