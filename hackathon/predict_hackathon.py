@@ -78,7 +78,6 @@ def prepare_protein_ligand(datapoint_id: str, protein: Protein, ligands: list[Sm
 
     # Example: predict 5 structures
     cli_args = ["--diffusion_samples", "5"]
-    # cli_args.append('--use_msa_server')
     return [(input_dict, cli_args)]
 
 def post_process_protein_complex(datapoint: Datapoint, input_dicts: List[dict[str, Any]], cli_args_list: List[list[str]], prediction_dirs: List[Path]) -> List[Path]:
