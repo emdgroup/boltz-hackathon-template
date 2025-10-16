@@ -41,14 +41,16 @@ To participate in the hackathon:
    - `post_process_protein_complex()` or `post_process_protein_ligand()` - Re-rank or post-process predictions
    - You can also modify any Boltz source code in `src/boltz/` as needed
 
+   This is explained in more detail below.
+
 2. **Run predictions**: Execute the prediction script on a validation dataset:
    ```bash
    python hackathon/predict_hackathon.py \
-       --input-jsonl hackathon_data/datasets/abag_public/abag_public_dataset.jsonl \
-       --msa-dir hackathon_data/datasets/abag_public/msa/ \
-       --submission-dir ./my_predictions \
-       --intermediate-dir ./tmp/ \
-       --result-folder ./my_results
+       --input-jsonl hackathon_data/datasets/abag_public/abag_public_dataset.jsonl \ # Information about task type, input molecules, and ground truth for evaluation
+       --msa-dir hackathon_data/datasets/abag_public/msa/ \ # Pre-computed MSA
+       --submission-dir ./my_predictions \ # Structure predictions
+       --intermediate-dir ./tmp/ \ # Temporary files
+       --result-folder ./my_results # Evaluation results (metrics)
    ```
 
 3. **Evaluate**: Results will be automatically computed and saved to the `--result-folder` directory. 
@@ -62,16 +64,19 @@ Review the metrics to assess your improvements.
 
 ### `hackathon/predict_hackathon.py`
 
-We will evaluate your contributions by calling `hackathon/predict_hackathon.py` that will do the following three main steps for each data point of a dataset: 
+We will evaluate your contributions by calling `hackathon/predict_hackathon.py` (see example above). This script performs the following main steps for each data point (e.g., protein complex) of a dataset: 
 
-- generate one or multiple combinations of input yaml file and CLI argument
-- call Boltz with each combination
-- post-process and rank the predictions from all combinations
-- store the top 5 final ranked predictions in the submission directory
+1. Generate one or multiple combinations of input YAML file (protein and molecule input data) and CLI argument (passed to Boltz)
+
+2. Call Boltz with each specified combination of YAML file and CLI arguments
+
+3. Post-process and rank the predictions from all combinations
+
+4. Store the top 5 final ranked predictions in the submission directory
 
 You can modify steps 1 and 3 by editing the functions in `hackathon/predict_hackathon.py`.
 
-#### Modifying step 1: Generating input yaml files and CLI arguments
+#### Modifying step 1: Generating input YAML files and CLI arguments
 
 To adapt step 1 modify the following function for the antibody-antigen complex prediction challenge (the allosteric-orthosteric ligand prediction challenge is similar):
 
@@ -80,15 +85,19 @@ To adapt step 1 modify the following function for the antibody-antigen complex p
 This function gets as input:
 
 - `datapoint_id`: The ID of the current datapoint
-- `proteins`: A list of protein objects to be processed
+- `proteins`: A list of protein objects to be processed (defined in `hackathon_api.Protein`)
 - `input_dict`: A pre-filled dictionary containing the YAML definition for that data point
-- `msa_dir`: The directory with the MSA files
+- `msa_dir`: The directory with the precomputed MSA files
+
+For example input information see `hackathon_data/datasets/abag_public/abag_public.jsonl`. This information will be automatically converted to the above-specified objects.
 
 Each protein has attributes 
 
 - `id`: The chain ID of the protein
 - `sequence`: The amino acid sequence of the protein
 - `msa`: The name of the MSA file within `msa_dir`
+
+Each data point contains three proteins with IDs: `"H"` (heavy chain segment), `"L"` (light chain segment), and `"A"` (antigen).
 
 The function should return a **list of tuples**, where each tuple contains:
 
@@ -97,13 +106,15 @@ The function should return a **list of tuples**, where each tuple contains:
 
 By returning multiple tuples, you can run Boltz with different configurations for the same datapoint (e.g., different sampling strategies, different constraints, different hyperparameters). Each configuration will be run separately with its own YAML file.
 
-You can modify this function, e.g., to tailor the CLI args like changing the number of diffusion samples or recycling steps. Or you could add constraints to the yaml file through modifications to the `input_dict`.
+You can modify this function, e.g., to tailor the CLI args like changing the number of diffusion samples or recycling steps. Or you could add constraints to the YAML file through modifications to the `input_dict`.
 
-Note that we have already precomputed MSA for all test proteins and it will be passed to the `prepare_protein_complex` function alongside the test protein sequences. Thus, you can not change the MSA input. However, you can post-process the input MSA within the `prepare_protein_complex` function before it is passed to the Boltz model. You can find example MSA in the provided data.
+Note that we have already precomputed MSA for all test proteins and it will be input alongside the test protein sequences. Thus, you can not change the MSA calculation. However, you can post-process the input MSA within the `prepare_protein_complex` function before it is passed to the Boltz model. You can find example MSA in the provided data.
 
 #### Step 2: Running Boltz
 
 With the provided information, the script will then call Boltz once for each configuration. 
+
+You are also welcome to make modifications to the Boltz code as needed.
 
 #### Modifying step 3: Post-processing and ranking predictions
 
@@ -112,7 +123,7 @@ Afterwards, the following function gets called:
 `def post_process_protein_complex(datapoint: Datapoint, input_dicts: List[dict[str, Any]], cli_args_list: List[list[str]], prediction_dirs: List[Path]) -> List[Path]:` 
 
 This function receives:
-- `datapoint`: The original datapoint object
+- `datapoint`: The original datapoint object (defined in `hackathon_api.Datapoint`)
 - `input_dicts`: A list of input dictionaries used (one per configuration)
 - `cli_args_list`: A list of CLI arguments used (one per configuration)
 - `prediction_dirs`: A list of directories containing prediction results (one per configuration)
@@ -125,11 +136,14 @@ You can use `post_process_protein_complex`, e.g., to modify, combine or re-rank 
 
 #### Allosteric-orthosteric ligand prediction challenge
 
-For the allosteric-orthosteric ligand challenge, there are similar functions:
+For the allosteric-orthosteric ligand challenge, there are similar functions as for antibody-antigen complex challenge explained above. Here are summarized only parts of code that differ between the two challenges, so please first read the above explanations.
 
 `def prepare_protein_ligand(datapoint_id: str, protein: Protein, ligands: list[SmallMolecule], input_dict: dict, msa_dir: Optional[Path] = None) -> List[tuple[dict, List[str]]]:`
 
-Here, `protein` is a single protein object and `ligands` is a list of small molecule objects.
+Here, `protein` is a single protein object and `ligands` is a list of small molecule objects (defined in `hackathon_api.SmallMolecule`).
+
+For example input information see `hackathon_data/datasets/asos_public/asos_public.jsonl`.
+
 Each small molecule has attributes:
 - `id`: The ID of the small molecule
 - `smiles`: The SMILES string of the small molecule
@@ -141,10 +155,6 @@ For post-processing and re-ranking, use the function
 `def post_process_protein_ligand(datapoint: Datapoint, input_dicts: List[dict[str, Any]], cli_args_list: List[list[str]], prediction_dirs: List[Path]) -> List[Path]:`
 
 This function receives lists of configurations and returns a list of **Path objects** pointing to the ranked PDB files.
-
-### Boltz code
-
-You are also welcome to make modifications to the Boltz code as needed.
 
 ### Dependencies
 
@@ -185,7 +195,7 @@ python hackathon/predict_hackathon.py \
     --result-folder RESULT_DIR
 ```
 
-Replace `SUBMISSION_DIR` with the path to a directory where you want to store your predictions and `RESULT_DIR` with the path to a directory where you want to store the evaluation results.
+Replace `SUBMISSION_DIR` with the path to a directory where you want to store your structure predictions and `RESULT_DIR` with the path to a directory where you want to store the evaluation results.
 If you do not provide `--result-folder`, the script will only run the predictions and not the evaluation.
 
 If you just want to run the evaluation on already existing predictions:
@@ -198,6 +208,7 @@ python hackathon/evaluate_abag.py \
 ```
 
 The evaluation script will compute the Capri-Q docking assessment classification scores (high, medium, acceptable, incorrect, error) for each of your top 5 predictions per data point.
+Error means that the prediction or evaluation did not finish due to a programmatic error.
 It will then print the distribution of classifications for the top 1 predictions across all data points.
 Additionally, it will compute the number of "successful" predictions, i.e., the number of data points for which the top 1 prediction is classified as "acceptable" or better.
 You will find more stats in a file `combined_results.csv` in the result folder.
