@@ -21,6 +21,17 @@ conda activate boltz
 pip install -e .[cuda]
 ```
 
+## Download the datasets 📥
+
+Please download the data for both challenges from the links below and place them in the `hackathon_data` folder.
+The data includes the actual datasets, pre-computed MSAs, example predictions and evaluations.
+
+```
+wget https://d2v9mdonbgo0hk.cloudfront.net/hackathon_data.tar.gz
+mkdir hackathon_data
+tar -xvf hackathon_data.tar.gz -C hackathon_data
+```
+
 ## Quick Start ⚡️
 
 To participate in the hackathon:
@@ -33,8 +44,8 @@ To participate in the hackathon:
 2. **Run predictions**: Execute the prediction script on a validation dataset:
    ```bash
    python hackathon/predict_hackathon.py \
-       --input-jsonl hackathon_datasets/abag_public/abag_public_dataset.jsonl \
-       --msa-dir hackathon_datasets/abag_public/msa/ \
+       --input-jsonl hackathon_data/datasets/abag_public/abag_public_dataset.jsonl \
+       --msa-dir hackathon_data/datasets/abag_public/msa/ \
        --submission-dir ./my_predictions \
        --intermediate-dir ./tmp/ \
        --result-folder ./my_results
@@ -165,8 +176,8 @@ To run the prediction and evaluation, use:
 
 ```bash
 python hackathon/predict_hackathon.py \
-    --input-jsonl hackathon_datasets/abag_public/abag_public_dataset.jsonl \
-    --msa-dir hackathon_datasets/abag_public/msa/ \
+    --input-jsonl hackathon_data/datasets/abag_public/abag_public_dataset.jsonl \
+    --msa-dir hackathon_data/datasets/abag_public/msa/ \
     --submission-dir SUBMISSION_DIR \
     --intermediate-dir ./tmp/ \
     --result-folder RESULT_DIR
@@ -179,7 +190,7 @@ If you just want to run the evaluation on already existing predictions:
 
 ```bash
 python hackathon/evaluate_abag.py \
-    --dataset-file hackathon_datasets/abag_public/abag_public_dataset.jsonl \
+    --dataset-file hackathon_data/datasets/abag_public/abag_public_dataset.jsonl \
     --submission-folder SUBMISSION_DIR \
     --result-folder ./abag_public_evaluation/
 ```
@@ -200,8 +211,8 @@ To run the prediction and evaluation, use:
 
 ```bash
 python hackathon/predict_hackathon.py \
-    --input-jsonl hackathon_datasets/asos_public/asos_public_dataset.jsonl \
-    --msa-dir hackathon_datasets/asos_public/msa/ \
+    --input-jsonl hackathon_data/datasets/asos_public/asos_public_dataset.jsonl \
+    --msa-dir hackathon_data/datasets/asos_public/msa/ \
     --submission-dir SUBMISSION_DIR \
     --intermediate-dir ./tmp/ \
     --result-folder RESULT_DIR
@@ -214,7 +225,7 @@ If you just want to run the evaluation on already existing predictions:
 
 ```bash
 python hackathon/evaluate_asos.py \
-    --dataset-file hackathon_datasets/asos_public/asos_public_dataset.jsonl \
+    --dataset-file hackathon_data/datasets/asos_public/asos_public_dataset.jsonl \
     --submission-folder SUBMISSION_DIR \
     --result-folder ./asos_public_evaluation/
 ```
