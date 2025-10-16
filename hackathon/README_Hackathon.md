@@ -99,6 +99,8 @@ By returning multiple tuples, you can run Boltz with different configurations fo
 
 You can modify this function, e.g., to tailor the CLI args like changing the number of diffusion samples or recycling steps. Or you could add constraints to the yaml file through modifications to the `input_dict`.
 
+Note that we have already precomputed MSA for all test proteins and it will be passed to the `prepare_protein_complex` function alongside the test protein sequences. Thus, you can not change the MSA input. However, you can post-process the input MSA within the `prepare_protein_complex` function before it is passed to the Boltz model. You can find example MSA in the provided data.
+
 #### Step 2: Running Boltz
 
 With the provided information, the script will then call Boltz once for each configuration. 
