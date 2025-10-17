@@ -64,17 +64,17 @@ Review the metrics to assess your improvements.
 
 ### `hackathon/predict_hackathon.py`
 
-We will evaluate your contributions by calling `hackathon/predict_hackathon.py` (see example above). This script performs the following main steps for each data point (e.g., protein complex) of a dataset: 
+We will evaluate your contributions by calling `hackathon/predict_hackathon.py` (see example above). This script performs the following main steps for each data point (e.g., protein complex) of a dataset (defined in`--input-jsonl`): 
 
-1. Generate one or multiple combinations of input YAML file (protein and molecule input data) and CLI argument (passed to Boltz)
+1. Generate one or multiple combinations of Boltz input YAML file (protein and molecule input data) and Boltz CLI arguments
 
 2. Call Boltz with each specified combination of YAML file and CLI arguments
 
-3. Post-process and rank the predictions from all combinations
-
-4. Store the top 5 final ranked predictions in the submission directory
+3. Post-process and rank the predictions from all combinations and store top 5 predictions in the submission directory
 
 You can modify steps 1 and 3 by editing the functions in `hackathon/predict_hackathon.py`.
+
+![Overview of the hackathon workflow](img/overview.svg)
 
 #### Modifying step 1: Generating input YAML files and CLI arguments
 
