@@ -99,18 +99,17 @@ def get_ligand_rmsd(exp_file, pred_file, ligand_name_exp, ligand_name_pred):
     return rmsd
 
 
-def load_dataset(dataset_folder, dataset_file):
+def load_dataset(dataset_file):
     """
     Load the ASOS dataset and extract ligand information.
     
     Args:
-        dataset_folder: Path to dataset folder
         dataset_file: Dataset filename
     
     Returns:
         Tuple of (dataset, ligand_info)
     """
-    dataset = [json.loads(line) for line in open(os.path.join(dataset_folder, dataset_file))]
+    dataset = [json.loads(line) for line in open(dataset_file, 'r')]
     print(f"Loaded {len(dataset)} samples from the dataset.")
 
     ligand_info = {}
@@ -335,7 +334,7 @@ def main():
     if not args.dataset_folder:
         args.dataset_folder = os.path.dirname(os.path.abspath(args.dataset_file))
         
-    dataset, ligand_info = load_dataset(args.dataset_folder, args.dataset_file)
+    dataset, ligand_info = load_dataset(args.dataset_file)
     print(f"Found ligand information for {len(ligand_info)} datapoints")
 
     # Align structures
