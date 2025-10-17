@@ -82,6 +82,8 @@ To adapt step 1 modify the following function for the antibody-antigen complex p
 
 `def prepare_protein_complex(datapoint_id: str, proteins: List[Protein], input_dict: dict, msa_dir: Optional[Path] = None) -> List[tuple[dict, List[str]]]:`
 
+This function enables modification of [Boltz inputs](https://github.com/jwohlwend/boltz/tree/main?tab=readme-ov-file#inference) - the YAML file with molecular information (e.g., proteins, ligands, constraints, etc.) and CLI arguments (e.g., the number of diffusion samples or recycling steps).
+
 This function gets as input:
 
 - `datapoint_id`: The ID of the current datapoint
@@ -101,12 +103,10 @@ Each data point contains three proteins with IDs: `"H"` (heavy chain segment), `
 
 The function should return a **list of tuples**, where each tuple contains:
 
-- A modified `input_dict` with any changes made during preparation
+- A modified `input_dict` with any changes made during preparation, which will be reflected in the Boltz input YAML.
 - A list of CLI arguments that should be passed to Boltz for this configuration.
 
-By returning multiple tuples, you can run Boltz with different configurations for the same datapoint (e.g., different sampling strategies, different constraints, different hyperparameters). Each configuration will be run separately with its own YAML file.
-
-You can modify this function, e.g., to tailor the CLI args like changing the number of diffusion samples or recycling steps. Or you could add constraints to the YAML file through modifications to the `input_dict`.
+By returning multiple tuples, you can run Boltz with different configurations for the same datapoint (e.g., different sampling strategies, different constraints, different hyperparameters). Each configuration will be run separately with its own YAML file and CLI argument combination.
 
 Note that we have already precomputed MSA for all test proteins and it will be input alongside the test protein sequences. Thus, you can not change the MSA calculation. However, you can post-process the input MSA within the `prepare_protein_complex` function before it is passed to the Boltz model. You can find example MSA in the provided data.
 
@@ -122,17 +122,17 @@ Afterwards, the following function gets called:
 
 `def post_process_protein_complex(datapoint: Datapoint, input_dicts: List[dict[str, Any]], cli_args_list: List[list[str]], prediction_dirs: List[Path]) -> List[Path]:` 
 
+This function enables modification, combining, or re-rank of predicted structures from multiple configurations. It outputs paths for multiple structure candidates for each data point.
+
 This function receives:
 - `datapoint`: The original datapoint object (defined in `hackathon_api.Datapoint`)
 - `input_dicts`: A list of input dictionaries used (one per configuration)
 - `cli_args_list`: A list of CLI arguments used (one per configuration)
 - `prediction_dirs`: A list of directories containing prediction results (one per configuration)
 
-The function should return a list of **Path objects** pointing to the PDB files of the predicted structures across all configurations.
+The function should return a list of **Path objects** pointing to the PDB files of the final structure candidates.
 The order is important!
 The first path will be your top 1 prediction, and we will evaluate up to 5 predictions for each data point.
-You can use `post_process_protein_complex`, e.g., to modify, combine or re-rank the predicted structures from multiple configurations.
-
 
 #### Allosteric-orthosteric ligand prediction challenge
 
