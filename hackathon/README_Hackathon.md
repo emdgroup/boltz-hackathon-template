@@ -48,13 +48,19 @@ To participate in the hackathon:
 
 2. **Run predictions**: Execute the prediction script on a validation dataset:
    ```bash
-   python hackathon/predict_hackathon.py \
-       --input-jsonl hackathon_data/datasets/abag_public/abag_public.jsonl \ # Information about task type, input molecules, and ground truth for evaluation
-       --msa-dir hackathon_data/datasets/abag_public/msa/ \ # Pre-computed MSA
-       --submission-dir ./my_predictions \ # Structure predictions
-       --intermediate-dir ./tmp/ \ # Temporary files
-       --result-folder ./my_results # Evaluation results (metrics)
+    python hackathon/predict_hackathon.py \
+        --input-jsonl hackathon_data/datasets/abag_public/abag_public.jsonl \
+        --msa-dir hackathon_data/datasets/abag_public/msa/ \
+        --submission-dir ./my_predictions \
+        --intermediate-dir ./tmp/ \
+        --result-folder ./my_results
    ```
+
+  - `--input-jsonl` provides information about task type, input molecules, and ground truth for evaluation
+  - `--msa-dir` contains the pre-computed MSA
+  - `--submission-dir` is the output directory for the predicted structures
+  - `--intermediate-dir` is directory for temporary files
+  - `--result-folder` is the output directory for the evaluation results (metrics)
 
    **_NOTE:_** If this is your first time using `boltz`, some files (model weights, CCD library) will get downloaded to your machine first. This can take a while and should *not* be interrupted to not corrupt the files. So take the chance, grab a coffee, and talk to some other participants!
 
