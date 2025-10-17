@@ -194,7 +194,7 @@ For both challenges we provide a validation data set that you can use to test yo
 
 ### Antibody-Antigen Complex Prediction Challenge
 
-The validation set for the antibody-antigen complex challenge comprises of 12 public PDB structures, all released after the cut-off date for Boltz training data.
+The validation set for the antibody-antigen complex challenge comprises of 10 public PDB structures, all released after the cut-off date for Boltz training data.
 
 To run the prediction and evaluation, use:
 
@@ -224,6 +224,13 @@ Error means that the prediction or evaluation did not finish due to a programmat
 It will then print the distribution of classifications for the top 1 predictions across all data points.
 Additionally, it will compute the number of "successful" predictions, i.e., the number of data points for which the top 1 prediction is classified as "acceptable" or better.
 You will find more stats in a file `combined_results.csv` in the result folder.
+
+On the validation set, Boltz-2 with default settings should give you the following distribution of classifications for the top 1 predictions:
+
+- High: 2/10
+- Medium: 0/10
+- Acceptable: 0/10
+- Incorrect: 8/10
 
 The winner of this challenge will be the team with the highest number of successful top 1 predictions on our *internal* test set. 
 Ties are broken by looking at the number of predictions with “high” classification, then with “medium” classification and finally with “acceptable” classification.
@@ -258,6 +265,11 @@ python hackathon/evaluate_asos.py \
 The evaluation script will compute the ligand RMSD for each of your top 5 predictions per data point and print the mean of the top 1 RMSDs across all data points, just the allosteric data points, and just the orthosteric data points.
 Additionally, it will compute the mean of the minimum RMSDs in the top 5 predictions and the number of data points with minimum RMSD < 2Å in the top 5 predictions.
 You will find more stats in a file `combined_results.csv` in the result folder.
+
+Below you see examples of per-structure RMSD plots that Boltz-2 with default settings should give you, with a mean top-1 RMSD of ~6.26Å on this validation set.
+
+![Example per-structure results for the allosteric-orthosteric ligand challenge](img/allosteric_rmsd.png)
+![Example per-structure results for the allosteric-orthosteric ligand challenge](img/orthosteric_rmsd.png)
 
 The winner of this challenge will be the team with the lowest mean RMSD of the top 1 predictions on our *internal* test set.
 
