@@ -21,7 +21,7 @@ conda activate boltz
 pip install -e ".[cuda]"
 ```
 
-**_NOTE:_** We strongly suggest to use an architecture that supports `cuda` to achieve fast inference. If your machine does not support `cuda`, you can `pip install -e .` for installing without `cuda` support. Note however that this is *not recommended*, and that you might have issues using `boltz` on machines without `cuda` support. 
+**_NOTE:_** This hackathon **requires CUDA support**. The evaluation environment uses NVIDIA GPUs, and predictions must be run with CUDA acceleration. CPU-only installations are not supported for this hackathon.
 
 ## Download the datasets 📥
 
