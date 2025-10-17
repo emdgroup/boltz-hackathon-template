@@ -140,11 +140,12 @@ For the allosteric-orthosteric ligand challenge, there are similar functions as 
 
 `def prepare_protein_ligand(datapoint_id: str, protein: Protein, ligands: list[SmallMolecule], input_dict: dict, msa_dir: Optional[Path] = None) -> List[tuple[dict, List[str]]]:`
 
-Here, `protein` is a single protein object and `ligands` is a list of small molecule objects (defined in `hackathon_api.SmallMolecule`).
+Here, `protein` is a single protein object and `ligands` is a list containing a single small molecule object (defined in `hackathon_api.SmallMolecule`). 
+We initially thought of allowing multiple ligands, but for this challenge we will only have a single ligand per data point.
 
 For example input information see `hackathon_data/datasets/asos_public/asos_public.jsonl`.
 
-Each small molecule has attributes:
+The small molecule has attributes:
 - `id`: The ID of the small molecule
 - `smiles`: The SMILES string of the small molecule
 

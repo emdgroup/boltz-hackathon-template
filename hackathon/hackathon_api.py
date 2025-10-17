@@ -41,7 +41,6 @@ class Datapoint:
     datapoint_id: str
     task_type: TaskType
     proteins: list[Protein]
-    ligands: Optional[list[SmallMolecule]] = None
+    ligands: Optional[list[SmallMolecule]] = None  # We will only have a SINGLE ligand for the allosteric/orthosteric binding challenge
     ground_truth: Optional[dict[str, Any]] = None
-    # Optionally, add other fields as needed (e.g., metadata)
 

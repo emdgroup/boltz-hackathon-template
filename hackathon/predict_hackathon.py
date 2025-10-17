@@ -55,7 +55,7 @@ def prepare_protein_ligand(datapoint_id: str, protein: Protein, ligands: list[Sm
     Args:
         datapoint_id: The unique identifier for this datapoint
         protein: The protein sequence
-        ligands: A list of small molecule/ligand objects
+        ligands: A list of a single small molecule ligand object 
         input_dict: Prefilled input dict
         msa_dir: Directory containing MSA files (for computing relative paths)
     Returns:
@@ -63,7 +63,7 @@ def prepare_protein_ligand(datapoint_id: str, protein: Protein, ligands: list[Sm
     """
     # Please note:
     # `protein` is a single-chain target protein sequence with id A
-    # `ligands` is a list of small molecule/ligand objects with unknown binding sites
+    # `ligands` contains a single small molecule ligand object with unknown binding sites
     # you can modify input_dict to change the input yaml file going into the prediction, e.g.
     # ```
     # input_dict["constraints"] = [{
