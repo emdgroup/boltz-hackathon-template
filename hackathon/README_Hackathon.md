@@ -11,7 +11,7 @@ Please read these instructions carefully before you start.
 
 First, create a fork of the template repository!
 
-Different from the original installation instructions, please set up your environment by first using `conda` or `mamba` to create the environment and then use `pip` to install the `Boltz` package.
+Different from the original installation instructions, please set up your environment by first using `conda` or `mamba` to create the environment and then use `pip` to install the `boltz` package.
 
 ```
 git clone YOUR_FORKED_REPO_URL
@@ -21,7 +21,7 @@ conda activate boltz
 pip install -e ".[cuda]"
 ```
 
-**_NOTE:_** We strongly suggest to use an architecture that supports `cuda`, as the calculations that are going to be performed require a lot of computational power. If your machine does not support `cuda`, you can `pip install -e .` for installing without `cuda` support. Note however that this is *not recommended*, and that you might have issues using `boltz` on machines without `cuda` support. 
+**_NOTE:_** We strongly suggest to use an architecture that supports `cuda` to achieve fast inference. If your machine does not support `cuda`, you can `pip install -e .` for installing without `cuda` support. Note however that this is *not recommended*, and that you might have issues using `boltz` on machines without `cuda` support. 
 
 ## Download the datasets 📥
 
@@ -43,8 +43,8 @@ To participate in the hackathon:
    - `post_process_protein_complex()` or `post_process_protein_ligand()` - Re-rank or post-process predictions
    - You can also modify any Boltz source code in `src/boltz/` as needed
 
-   Note that those functions currently already contain some code such that the next scripts can already be executed to test if everything is working correctly.
-   We explain those in more detail below.
+   These functions already contain some minimal code such that the next scripts can be successfully executed.
+   We explain the functions in more detail below.
 
 2. **Run predictions**: Execute the prediction script on a validation dataset:
    ```bash
@@ -56,7 +56,7 @@ To participate in the hackathon:
        --result-folder ./my_results # Evaluation results (metrics)
    ```
 
-   **_NOTE:_** If this is your first time using `boltz`, some files might be downloaded and stored on your machine first. Note that this can take a while and should *not* be interrupted, as this can corrupt the files, requiring manually deleting them. So take the chance, grab a coffee, and talk to some other participants!
+   **_NOTE:_** If this is your first time using `boltz`, some files (model weights, CCD library) will get downloaded to your machine first. This can take a while and should *not* be interrupted to not corrupt the files. So take the chance, grab a coffee, and talk to some other participants!
 
 3. **Evaluate**: Results will be automatically computed and saved to the `--result-folder` directory. 
 Review the metrics to assess your improvements.
@@ -94,7 +94,7 @@ This function gets as input:
 - `datapoint_id: str`: The ID of the current datapoint
 - `proteins: list[Protein]`: A list of `Protein` objects to be processed (defined in `hackathon_api.Protein`)
 - `input_dict: dict`: A pre-filled dictionary containing the YAML definition for that data point
-- `msa_dir: Optional[Path]`: The directory with the precomputed MSA files. If not provided, MSA will be computed automatically. [TODO] VERIFY!!!
+- `msa_dir: Path`: The directory with the precomputed MSA files. MSA files are always provided.
 
 For example input information see `hackathon_data/datasets/abag_public/abag_public.jsonl`. This information will be automatically converted to the above-specified objects.
 
@@ -102,7 +102,7 @@ Each protein has attributes
 
 - `id: str`: The chain ID of the protein
 - `sequence: str`: The amino acid sequence of the protein
-- `msa: Optional[str]`: The name of the MSA file within `msa_dir` (if provided)
+- `msa: str`: The name of the MSA file within `msa_dir`. We always provide a precomputed MSA.
 
 Each data point contains three proteins with IDs: `"H"` (heavy chain segment), `"L"` (light chain segment), and `"A"` (antigen).
 
@@ -113,7 +113,7 @@ The function should return a **list of tuples**, where each tuple contains:
 
 By returning multiple tuples, you can run Boltz with different configurations for the same datapoint (e.g., different sampling strategies, different constraints, different hyperparameters). Each configuration will be run separately with its own YAML file and CLI argument combination.
 
-Note that we have already precomputed MSA for all test proteins and it will be input alongside the test protein sequences. Thus, you can not change the MSA calculation. However, you can post-process the input MSA within the `prepare_protein_complex` function before it is passed to the Boltz model. You can find example MSA in the provided data.
+Note that we have already precomputed MSA for all proteins and it will be input alongside the protein sequences. Thus, you can not change the MSA calculation. However, you can post-process the input MSA within the `prepare_protein_complex` function before it is passed to the Boltz model, e.g. save a sub-sampled MSA to a *new* CSV file and ajust the MSA path of the protein in `input_dict` accordingly. You can find example MSA in the provided data.
 
 #### Step 2: Running Boltz
 
