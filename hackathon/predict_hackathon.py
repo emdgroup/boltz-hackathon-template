@@ -25,7 +25,7 @@ def prepare_protein_complex(datapoint_id: str, proteins: List[Protein], input_di
         input_dict: Prefilled input dict
         msa_dir: Directory containing MSA files (for computing relative paths)
     Returns:
-        List of tuples of (final input dict, list of CLI args). Each tuple represents a separate configuration to run.
+        List of tuples of (final input dict that will get exported as YAML, list of CLI args). Each tuple represents a separate configuration to run.
     """
     # Please note:
     # `proteins`` will contain 3 chains
@@ -59,7 +59,7 @@ def prepare_protein_ligand(datapoint_id: str, protein: Protein, ligands: list[Sm
         input_dict: Prefilled input dict
         msa_dir: Directory containing MSA files (for computing relative paths)
     Returns:
-        List of tuples of (final input dict, list of CLI args). Each tuple represents a separate configuration to run.
+        List of tuples of (final input dict that will get exported as YAML, list of CLI args). Each tuple represents a separate configuration to run.
     """
     # Please note:
     # `protein` is a single-chain target protein sequence with id A
