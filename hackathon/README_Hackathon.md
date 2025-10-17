@@ -64,7 +64,6 @@ To participate in the hackathon:
 
    **_NOTE:_** If this is your first time using `boltz`, some files (model weights, CCD library) will get downloaded to your machine first. This can take a while and should *not* be interrupted to not corrupt the files. So take the chance, grab a coffee, and talk to some other participants!
 
-
 3. **Evaluate**: Results will be automatically computed and saved to the `--result-folder` directory. 
 Review the metrics to assess your improvements.
 
