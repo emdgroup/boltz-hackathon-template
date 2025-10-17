@@ -15,7 +15,7 @@
 
 Please refer to the [hackathon README](hackathon/README_Hackathon.md) for instructions on how to participate in the Boltz hackathon.
 
-**Note:** The hackathon requires CUDA support. Participants must have access to NVIDIA GPUs for predictions.
+**Note:** The hackathon requires at least one CUDA-enabled GPU for running inference.
 
 ## Introduction
 

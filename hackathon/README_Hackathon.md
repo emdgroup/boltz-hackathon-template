@@ -21,7 +21,7 @@ conda activate boltz
 pip install -e ".[cuda]"
 ```
 
-**_NOTE:_** This hackathon **requires CUDA support**. The evaluation environment uses NVIDIA GPUs, and predictions must be run with CUDA acceleration. CPU-only installations are not supported for this hackathon.
+**_NOTE:_** The hackathon requires at least one CUDA-enabled GPU for running inference. CPU-only installations are not supported for this hackathon, use at your own risk.
 
 ## Download the datasets 📥
 
