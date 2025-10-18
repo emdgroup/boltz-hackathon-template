@@ -297,7 +297,7 @@ If you make deeper changes to the provided code, make sure your final prediction
 ## Handing In Your Final Submission 🎉
 
 Before the deadline on **21st October 2025, 17:30 CEST / 11:30 EDT**, please submit your final code by pushing to your forked repository on GitHub. 
-Then fill out the [submission form](TBD) and enter
+Then fill out the [submission form](https://forms.office.com/Pages/ResponsePage.aspx?id=Wft223ejIEG8VFnerX05yXDK4yzHF_lJvVLbJHaHqwFUN0NZMk4xTFBSUlNWTlkzNUhDS1pBUlVHViQlQCN0PWcu) and enter
 
 - your group name
 - the link to your repository
