@@ -46,7 +46,7 @@ def run_evaluation(gt_dir, gt_structures: dict[str, Any], structure_name: str, i
 
     docker_cmd = [
         "docker", "run", "--group-add", str(os.getgid()), "--rm", "--network", "none",
-        "-v", f"{gt_dir}:/app/ground_truth/",
+        "-v", f"{Path(gt_dir).absolute()}:/app/ground_truth/",
         "-v", f"{output_subdir.absolute()}:/app/outputs",
         "-v", f"{prediction_file.absolute()}:/app/predictions/prediction.pdb",
         "gitlab-registry.in2p3.fr/cmsb-public/capri-q",
