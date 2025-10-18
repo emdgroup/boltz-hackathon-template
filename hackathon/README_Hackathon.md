@@ -59,7 +59,7 @@ To participate in the hackathon:
   - `--input-jsonl` provides information about task type, input molecules, and ground truth for evaluation
   - `--msa-dir` contains the pre-computed MSA
   - `--submission-dir` is the output directory for the predicted structures
-  - `--intermediate-dir` is directory for temporary files
+  - `--intermediate-dir` is directory for temporary files (input YAMLs, Boltz outputs, etc.)
   - `--result-folder` is the output directory for the evaluation results (metrics)
 
    **_NOTE:_** If this is your first time using `boltz`, some files (model weights, CCD library) will get downloaded to your machine first. This can take a while and should *not* be interrupted to not corrupt the files. So take the chance, grab a coffee, and talk to some other participants!
