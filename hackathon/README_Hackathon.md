@@ -183,8 +183,13 @@ When evaluating your contributions your code will run in an environment with the
 - 32 CPU cores
 - 300 GB RAM
 
-On this machine the full end-to-end prediction for a single datapoint, including pre-processing, Boltz prediction, post-processing, should complete within 15 minutes on average. 
-As a reference, one typical antibody-antigen complex with 5 diffusion samples and default settings takes around 80-90 seconds end-to-end on that kind of hardware.
+Evaluation on either the full antibody-antigen complex test set or the full allosteric-orthosteric ligand test set must complete within **24 hours**.
+
+As a reference, predicting the full internal test set for the antibody-antigen complex challenge (50 data points) with Boltz-2 settings as in this template repo takes around 80 minutes end-to-end on that kind of hardware. 
+That means you can roughly spend 18 times more compute budget than Boltz-2 default settings if you want to process the full test set within 24 hours, but we advise to leave some buffer.
+
+Predicting the full internal test set for the allosteric-orthosteric ligand challenge (44 data points) with Boltz-2 settings as in this template repo takes around 60 minutes end-to-end on our hardware.
+That means you can roughly spend 24 times more compute budget than Boltz-2 default settings if you want to process the full test set within 24 hours, but we advise to leave some buffer.
 
 To protect our proprietary data and ensure a fair competition, the evaluation environment will have **no internet access**.
 
