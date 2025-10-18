@@ -167,7 +167,6 @@ def align_structures(dataset, ligand_info, dataset_folder, submission_folder, te
     # Run PyMOL alignment
     sh_file = os.path.join(tempfolder, "pymol_align.sh")
     with open(sh_file, "w") as p:
-        p.write("module load pymol\n")
         p.write(f"pymol -c {os.path.join(tempfolder, 'align.pml')}\n")
 
     os.system("chmod u+x " + sh_file)
