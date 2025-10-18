@@ -325,4 +325,4 @@ If you are joining virtually, please reach out on Slack in the `#m-boltz-hackath
 
 1. Nittinger, Eva, et al. "Co-folding, the future of docking – prediction of allosteric and orthosteric ligands." Artificial Intelligence in the Life Sciences, vol. 8, 2025, p. 100136. Elsevier,
 
-Good luck, have fun! 🚀
+**Good luck, have fun! 🚀**
