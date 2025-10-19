@@ -266,7 +266,7 @@ def _run_boltz_and_collect(datapoint) -> None:
     if not ranked_files:
         raise FileNotFoundError(f"No model files found for {datapoint.datapoint_id}")
 
-    for i, file_path in enumerate(ranked_files):
+    for i, file_path in enumerate(ranked_files[:5]):
         target = subdir / (f"model_{i}.pdb" if file_path.suffix == ".pdb" else f"model_{i}{file_path.suffix}")
         shutil.copy2(file_path, target)
         print(f"Saved: {target}")
