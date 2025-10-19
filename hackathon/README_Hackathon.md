@@ -99,7 +99,7 @@ This function gets as input:
 
 - `datapoint_id: str`: The ID of the current datapoint
 - `proteins: list[Protein]`: A list of `Protein` objects to be processed (defined in `hackathon_api.Protein`)
-- `input_dict: dict`: A pre-filled dictionary containing the YAML definition for that data point
+- `input_dict: dict`: A pre-filled dictionary with minimal input data for that data point
 - `msa_dir: Path`: The directory with the precomputed MSA files. MSA files are always provided.
 
 For example input information see `hackathon_data/datasets/abag_public/abag_public.jsonl`. This information will be automatically converted to the above-specified objects.
@@ -112,14 +112,28 @@ Each protein has attributes
 
 Each data point contains three proteins with IDs: `"H"` (heavy chain segment), `"L"` (light chain segment), and `"A"` (antigen).
 
+The `input_dict` has the `sequences` field already filled with `protein` or `ligand` entries for each molecule in the datapoint. 
+A `protein` entry already has the `id`, `sequence`, and `msa` fields filled. 
+A `ligand` entry has the `id` and `smiles` fields filled. 
+Inside this function you can copy and modify `input_dict` as needed to add or change any other fields supported by the Boltz input YAML format (e.g., constraints, hyperparameters, etc.).
+
 The function should return a **list of tuples**, where each tuple contains:
 
 - A modified `input_dict` with any changes made during preparation, which will be reflected in the Boltz input YAML.
 - A list of CLI arguments that should be passed to Boltz for this configuration.
 
-By returning multiple tuples, you can run Boltz with different configurations for the same datapoint (e.g., different sampling strategies, different constraints, different hyperparameters). Each configuration will be run separately with its own YAML file and CLI argument combination.
+By returning multiple tuples, you can run Boltz with different configurations for the same datapoint (e.g., different sampling strategies, different constraints, different hyperparameters). 
+Each configuration will be run separately with its own YAML file and CLI argument combination.
 
-Note that we have already precomputed MSA for all proteins and it will be input alongside the protein sequences. Thus, you can not change the MSA calculation. However, you can post-process the input MSA within the `prepare_protein_complex` function before it is passed to the Boltz model, e.g. save a sub-sampled MSA to a *new* CSV file and ajust the MSA path of the protein in `input_dict` accordingly. You can find example MSA in the provided data.
+**_NOTE_**: Your CLI arguments will be appended to a list of default arguments: 
+
+- `--devices 1`
+- `--cache` (use `BOLTZ_CACHE` environment variable to adapt cache location)
+- `--output-dir` (based on `--intermediate-dir` argument of `predict_hackathon.py`)
+- `--no-kernels` (to disable custom CUDA kernels for compatibility)
+- `--output-format pdb` (to always output PDB files)
+
+We have already precomputed MSAs for all proteins and they will be input alongside the protein sequences. Thus, you can not change the MSA calculation. However, you can post-process the input MSA within the `prepare_protein_complex` function before it is passed to the Boltz model, e.g. save a sub-sampled MSA to a *new* CSV file and ajust the MSA path of the protein in `input_dict` accordingly. You can find example MSA in the provided data.
 
 #### Step 2: Running Boltz
 
@@ -152,7 +166,8 @@ For the allosteric-orthosteric ligand challenge, there are similar functions as 
 `def prepare_protein_ligand(datapoint_id: str, protein: Protein, ligands: list[SmallMolecule], input_dict: dict, msa_dir: Optional[Path] = None) -> list[tuple[dict, list[str]]]:`
 
 Here, `protein` is a single protein object and `ligands` is a list containing a single small molecule object (defined in `hackathon_api.SmallMolecule`). 
-We initially thought of allowing multiple ligands, but for this challenge we will only have a single ligand per data point.
+
+**_NOTE_**: We initially thought of allowing multiple ligands, but for this challenge we will only have a single ligand per data point.
 
 For example input information see `hackathon_data/datasets/asos_public/asos_public.jsonl`.
 
