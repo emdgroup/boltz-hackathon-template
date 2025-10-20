@@ -145,7 +145,7 @@ The function should return a list of **Path objects** pointing to the PDB files 
 The order is important!
 The first path will be your top 1 prediction, and we will evaluate up to 5 predictions for each data point.
 
-#### Allosteric-orthosteric ligand prediction challenge
+### Allosteric-orthosteric ligand prediction challenge
 
 For the allosteric-orthosteric ligand challenge, there are similar functions as for antibody-antigen complex challenge explained above. Here are summarized only parts of code that differ between the two challenges, so please first read the above explanations.
 
