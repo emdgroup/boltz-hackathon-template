@@ -26,9 +26,11 @@ jobs:
       shell: bash -l {0}
       run: |
         conda activate boltz
-        pip install -e ".[cuda]"
+        pip install uv
+        uv pip install "numpy<2"
+        uv pip install -e ".[cuda]"
         # Install any additional requirements from participants
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        if [ -f requirements.txt ]; then uv pip install -r requirements.txt; fi
     
     - name: Test script help and argument parsing
       shell: bash -l {0}
