@@ -73,6 +73,8 @@ Review the metrics to assess your improvements.
 
 ## Entrypoints for Participants 💻
 
+The following workflow is relevant for both challenges. We provide some dedicated explanation only relevant for the Allosteric-orthosteric ligand prediction challenge down below.
+
 ### `hackathon/predict_hackathon.py`
 
 We will evaluate your contributions by calling `hackathon/predict_hackathon.py` (see example above). This script performs the following main steps for each data point (e.g., protein complex) of a dataset (defined in`--input-jsonl`): 
