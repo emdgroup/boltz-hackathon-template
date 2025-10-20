@@ -210,6 +210,8 @@ That means you can roughly spend 24 times more compute budget than Boltz-2 defau
 
 To protect our proprietary data and ensure a fair competition, the evaluation environment will have **no internet access**.
 
+If your workflow creates additional temporary files, please make sure to place them into the `--intermediate-dir` folder.
+
 ## Validation Sets 🧪
 
 For both challenges we provide a validation data set that you can use to test your contributions and track your progress.
