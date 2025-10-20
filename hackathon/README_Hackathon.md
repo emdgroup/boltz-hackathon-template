@@ -69,7 +69,7 @@ Review the metrics to assess your improvements.
 
 4. **Iterate**: Refine your approach based on evaluation results and repeat!
 
-5. **Submit**: Before the deadline, push your final code to your forked repository and fill out the [submission form](TBD).
+5. **Submit**: Before the deadline, push your final code to your forked repository and fill out the [submission form](https://forms.office.com/Pages/ResponsePage.aspx?id=Wft223ejIEG8VFnerX05yXDK4yzHF_lJvVLbJHaHqwFUN0NZMk4xTFBSUlNWTlkzNUhDS1pBUlVHViQlQCN0PWcu).
 
 ## Entrypoints for Participants 💻
 
