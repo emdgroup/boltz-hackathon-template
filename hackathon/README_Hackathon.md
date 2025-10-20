@@ -295,6 +295,12 @@ Below you see examples of per-structure RMSD plots that Boltz-2 with default set
 
 The winner of this challenge will be the team with the lowest mean RMSD of the top 1 predictions on our *internal* test set.
 
+### Public Leaderboard
+
+You can submit your results on the validation sets to a public leaderboard during the hackathon, here: 
+
+https://huggingface.co/spaces/hugging-science/M-Boltz-Hackathon
+
 ## Submission Format 📦
 
 If you make deeper changes to the provided code, make sure your final predictions are organized in the following structure:
