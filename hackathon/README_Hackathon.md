@@ -73,6 +73,8 @@ Review the metrics to assess your improvements.
 
 ## Entrypoints for Participants 💻
 
+The following workflow is relevant for both challenges. We provide some dedicated explanation only relevant for the Allosteric-orthosteric ligand prediction challenge down below.
+
 ### `hackathon/predict_hackathon.py`
 
 We will evaluate your contributions by calling `hackathon/predict_hackathon.py` (see example above). This script performs the following main steps for each data point (e.g., protein complex) of a dataset (defined in`--input-jsonl`): 
@@ -159,7 +161,7 @@ The function should return a list of **Path objects** pointing to the PDB files 
 The order is important!
 The first path will be your top 1 prediction, and we will evaluate up to 5 predictions for each data point.
 
-#### Allosteric-orthosteric ligand prediction challenge
+### Allosteric-orthosteric ligand prediction challenge
 
 For the allosteric-orthosteric ligand challenge, there are similar functions as for antibody-antigen complex challenge explained above. Here are summarized only parts of code that differ between the two challenges, so please first read the above explanations.
 
