@@ -522,7 +522,7 @@ def compute_msa(
             f.write("\n".join(csv_str))
 
 
-def process_input(  # noqa: C901, PLR0912, PLR0915, D103
+def process_single_input(  # noqa: C901, PLR0912, PLR0915, D103
     path: Path,
     ccd: dict,
     msa_dir: Path,
@@ -662,7 +662,7 @@ def process_input(  # noqa: C901, PLR0912, PLR0915, D103
 
 
 @rank_zero_only
-def process_inputs(
+def process_multiple_inputs(
     data: list[Path],
     out_dir: Path,
     ccd_path: Path,
@@ -770,7 +770,7 @@ def process_inputs(
 
     # Create partial function
     process_input_partial = partial(
-        process_input,
+        process_single_input,
         ccd=ccd,
         msa_dir=msa_dir,
         mol_dir=mol_dir,
@@ -1039,6 +1039,13 @@ def cli() -> None:
     is_flag=True,
     help=" to dump the s and z embeddings into a npz file. Default is False.",
 )
+@click.option(
+    "--inference_batch_size",
+    is_flag=True,
+    type=int,
+    default=1,
+    help="Set custom batch size in DataLoaders downstream.",
+)
 def predict(  # noqa: C901, PLR0915, PLR0912
     data: str,
     out_dir: str,
@@ -1077,6 +1084,7 @@ def predict(  # noqa: C901, PLR0915, PLR0912
     num_subsampled_msa: int = 1024,
     no_kernels: bool = False,
     write_embeddings: bool = False,
+    inference_batch_size: int = 2,
 ) -> None:
     """Run predictions with Boltz."""
     # If cpu, write a friendly warning
@@ -1088,6 +1096,10 @@ def predict(  # noqa: C901, PLR0915, PLR0912
     warnings.filterwarnings(
         "ignore", ".*that has Tensor Cores. To properly utilize them.*"
     )
+
+    if inference_batch_size < 1:
+        click.echo("Received inference_batch_size < 1; resetting to 1.")
+        inference_batch_size = 1
 
     # Set no grad
     torch.set_grad_enabled(False)
@@ -1159,7 +1171,7 @@ def predict(  # noqa: C901, PLR0915, PLR0912
     # Process inputs
     ccd_path = cache / "ccd.pkl"
     mol_dir = cache / "mols"
-    process_inputs(
+    process_multiple_inputs(
         data=data,
         out_dir=out_dir,
         ccd_path=ccd_path,
@@ -1279,6 +1291,7 @@ def predict(  # noqa: C901, PLR0915, PLR0912
                 template_dir=processed.template_dir,
                 extra_mols_dir=processed.extra_mols_dir,
                 override_method=method,
+                inference_batch_size=inference_batch_size
             )
         else:
             data_module = BoltzInferenceDataModule(
@@ -1287,6 +1300,7 @@ def predict(  # noqa: C901, PLR0915, PLR0912
                 msa_dir=processed.msa_dir,
                 num_workers=num_workers,
                 constraints_dir=processed.constraints_dir,
+                inference_batch_size=inference_batch_size
             )
 
         # Load model
@@ -1367,6 +1381,7 @@ def predict(  # noqa: C901, PLR0915, PLR0912
             extra_mols_dir=processed.extra_mols_dir,
             override_method="other",
             affinity=True,
+            inference_batch_size=inference_batch_size
         )
 
         predict_affinity_args = {
