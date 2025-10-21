@@ -388,6 +388,7 @@ class Boltz2InferenceDataModule(pl.LightningDataModule):
             override_method=self.override_method,
             affinity=self.affinity,
         )
+        print(f'In Boltz2Model {self.inference_batch_size = }')
         return DataLoader(
             dataset,
             batch_size=self.inference_batch_size,

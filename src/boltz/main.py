@@ -1123,7 +1123,7 @@ def predict(  # noqa: C901, PLR0915, PLR0912
     num_subsampled_msa: int = 1024,
     no_kernels: bool = False,
     write_embeddings: bool = False,
-    inference_batch_size: int = 0,
+    inference_batch_size: int = 100,
     auto_batch: bool = True,
     batch_cost_ceiling: float = 15000000.0,
 ) -> None:
@@ -1142,7 +1142,7 @@ def predict(  # noqa: C901, PLR0915, PLR0912
 
     if inference_batch_size < 1:
         click.echo("Received inference_batch_size < 1; resetting to 1.")
-        inference_batch_size = 1
+        inference_batch_size = 10000
 
     # Set no grad
     torch.set_grad_enabled(False)
@@ -1249,7 +1249,7 @@ def predict(  # noqa: C901, PLR0915, PLR0912
         print(f'{candidate = }')
         # If user manually set inference_batch_size > 1, respect manual unless candidate smaller (OOM guard)
         if inference_batch_size == 1 or candidate < inference_batch_size:
-            inference_batch_size = candidate
+            inference_batch_size = 100
             print(f'{candidate = }')
             print(f'{inference_batch_size = }')
         click.echo(
@@ -1259,6 +1259,8 @@ def predict(  # noqa: C901, PLR0915, PLR0912
     elif auto_batch and not filtered_manifest.records:
         click.echo("[auto_batch] No records to batch; skipping.")
 
+    print(f'{inference_batch_size = }')
+    inference_batch_size = 100
     # Load processed data
     processed_dir = out_dir / "processed"
     processed = BoltzProcessedInput(
