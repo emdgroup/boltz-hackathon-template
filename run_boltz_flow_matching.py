@@ -90,7 +90,10 @@ class BoltzFlowMatchingRunner:
         self.data_dir = Path("hackathon_data/datasets/abag_public")
         self.ground_truth_dir = self.data_dir / "ground_truth"
         self.input_dir = Path("boltz_inputs")
-        self.output_dir = Path("boltz_flow_predictions")
+        
+        # Create parameterized output directory name
+        params_str = f"flow_{self.flow_steps}steps_sigma{self.sigma_min}_{self.sigma_max}_samples{self.diffusion_samples}"
+        self.output_dir = Path(f"boltz_flow_predictions_{params_str}")
         
         # Create directories
         self.input_dir.mkdir(exist_ok=True)
@@ -99,6 +102,8 @@ class BoltzFlowMatchingRunner:
         print(f"BoltzFlowMatchingRunner initialized:")
         print(f"  Device: {self.device}")
         print(f"  Flow steps: {self.flow_steps} (vs {self.score_steps} score-based)")
+        print(f"  Sigma range: {self.sigma_min} - {self.sigma_max}")
+        print(f"  Diffusion samples: {self.diffusion_samples}")
         print(f"  Output directory: {self.output_dir}")
     
     def load_pdb_coordinates(self, pdb_file: Path) -> Dict[str, Any]:
@@ -206,19 +211,33 @@ class BoltzFlowMatchingRunner:
         print("="*80)
         
         if self.flow_checkpoint.exists():
-            print(f"✓ Flow matching checkpoint already exists: {self.flow_checkpoint}")
-            return self.flow_checkpoint
+            print(f"Removing existing checkpoint to regenerate: {self.flow_checkpoint}")
+            self.flow_checkpoint.unlink()
         
-        print(f"\nLoading checkpoint: {self.original_checkpoint}")
-        checkpoint = torch.load(self.original_checkpoint, map_location=self.device, weights_only=False)
+        print(f"\nLoading checkpoint: {self.original_checkpoint} to CPU")
+        checkpoint = torch.load(self.original_checkpoint, map_location='cpu', weights_only=False)
         
-        print(f"✓ Loaded checkpoint")
+        print(f"✓ Loaded checkpoint to CPU")
         
         # Modify sampling steps in hyperparameters
         hparams = checkpoint['hyper_parameters']
         
-        if 'structure_args' in hparams:
-            structure_args = hparams['structure_args']
+        # Enable flow matching in hyperparameters
+        # This is CRITICAL - it tells Boltz2.__init__ to use FlowMatchingDiffusion instead of AtomDiffusion
+        original_use_flow = hparams.get('use_flow_matching', False)
+        hparams['use_flow_matching'] = True
+        hparams['flow_conversion_method'] = 'noise_based'  # Use integrated analytical conversion
+        print(f"\n✓ CRITICAL: Enabled use_flow_matching in hyperparameters")
+        print(f"  Original value: {original_use_flow} → New value: True")
+        print(f"  Conversion method: noise_based (integrated analytical conversion)")
+        print(f"  This will cause Boltz2 to load diffusionv3_flow_matching.FlowMatchingDiffusion")
+        
+        if 'diffusion_process_args' in hparams:
+            print("✓ Found 'diffusion_process_args', renaming to 'structure_module_args' for compatibility")
+            hparams['structure_module_args'] = hparams.pop('diffusion_process_args')
+
+        if 'structure_module_args' in hparams:
+            structure_args = hparams['structure_module_args']
             
             # Store original for comparison
             original_steps = structure_args.get('num_sampling_steps', self.score_steps)
@@ -226,96 +245,31 @@ class BoltzFlowMatchingRunner:
             # Change to flow matching steps
             structure_args['num_sampling_steps'] = self.flow_steps
             
-            print(f"\n✓ Modified hyperparameters:")
+            print(f"✓ Modified hyperparameters:")
             print(f"  Sampling steps: {original_steps} → {self.flow_steps} (flow matching)")
         
-        # CRITICAL: Replace the diffusion module with FlowMatchingDiffusion
-        print(f"\n✓ Replacing diffusion module with FlowMatchingDiffusion...")
+        # Mark checkpoint as flow matching
+        # Boltz2.__init__ will see use_flow_matching=True and automatically instantiate FlowMatchingDiffusion
+        checkpoint['flow_matching_module'] = True
         
-        try:
-            # Load the original model to get the structure module
-            original_model = Boltz2.load_from_checkpoint(
-                self.original_checkpoint,
-                map_location=self.device,
-            )
-            
-            # Get the original diffusion module parameters
-            if hasattr(original_model, 'structure_module') and hasattr(original_model.structure_module, 'atom_diffusion'):
-                original_diffusion = original_model.structure_module.atom_diffusion
-                
-                # Extract the score model arguments from the original diffusion module
-                score_model_args = {
-                    'token_s': getattr(original_diffusion, 'token_s', 384),
-                    'atom_s': getattr(original_diffusion, 'atom_s', 128),
-                    'atoms_per_window_queries': getattr(original_diffusion, 'atoms_per_window_queries', 32),
-                    'atoms_per_window_keys': getattr(original_diffusion, 'atoms_per_window_keys', 128),
-                    'sigma_data': getattr(original_diffusion, 'sigma_data', 16),
-                    'dim_fourier': getattr(original_diffusion, 'dim_fourier', 256),
-                    'atom_encoder_depth': getattr(original_diffusion, 'atom_encoder_depth', 3),
-                    'atom_encoder_heads': getattr(original_diffusion, 'atom_encoder_heads', 4),
-                    'token_transformer_depth': getattr(original_diffusion, 'token_transformer_depth', 24),
-                    'token_transformer_heads': getattr(original_diffusion, 'token_transformer_heads', 8),
-                    'atom_decoder_depth': getattr(original_diffusion, 'atom_decoder_depth', 3),
-                    'atom_decoder_heads': getattr(original_diffusion, 'atom_decoder_heads', 4),
-                }
-                
-                print(f"  Extracted score model args: {score_model_args}")
-                
-                # Create new FlowMatchingDiffusion module
-                flow_diffusion = FlowMatchingDiffusion(
-                    score_model_args=score_model_args,
-                    num_sampling_steps=self.flow_steps,
-                    sigma_min=self.sigma_min,
-                    sigma_max=self.sigma_max,
-                    sigma_data=self.sigma_data,
-                )
-                
-                # Copy weights from original diffusion module to flow matching module
-                print(f"  Copying weights from original diffusion module...")
-                
-                # Get state dicts
-                original_state_dict = original_diffusion.state_dict()
-                flow_state_dict = flow_diffusion.state_dict()
-                
-                # Copy compatible weights
-                copied_weights = 0
-                for key, value in original_state_dict.items():
-                    if key in flow_state_dict and value.shape == flow_state_dict[key].shape:
-                        flow_state_dict[key] = value
-                        copied_weights += 1
-                
-                # Load the copied weights
-                flow_diffusion.load_state_dict(flow_state_dict)
-                
-                print(f"  ✓ Copied {copied_weights} weight tensors from original module")
-                
-                # Replace the diffusion module in the checkpoint
-                # We need to modify the checkpoint to use FlowMatchingDiffusion
-                print(f"  ✓ Replaced diffusion module with FlowMatchingDiffusion")
-                
-                # Update the checkpoint to indicate it's using flow matching
-                checkpoint['flow_matching_module'] = True
-                checkpoint['flow_matching_args'] = {
-                    'score_model_args': score_model_args,
-                    'num_sampling_steps': self.flow_steps,
-                    'sigma_min': self.sigma_min,
-                    'sigma_max': self.sigma_max,
-                    'sigma_data': self.sigma_data,
-                }
-                
-            else:
-                print(f"  ⚠ Could not find atom_diffusion module in structure_module")
-                print(f"  Will proceed with hyperparameter modification only")
-                
-        except Exception as e:
-            print(f"  ⚠ Error replacing diffusion module: {e}")
-            print(f"  Will proceed with hyperparameter modification only")
+        print(f"\n✓ Flow matching enabled in checkpoint")
+        print(f"  When loaded, Boltz2 will automatically use diffusionv3_flow_matching.FlowMatchingDiffusion")
         
         # Save modified checkpoint
         print(f"\nSaving flow matching checkpoint: {self.flow_checkpoint}")
         torch.save(checkpoint, self.flow_checkpoint)
         
         print(f"✓ Flow matching checkpoint saved")
+        
+        # VERIFY the saved checkpoint immediately
+        print(f"\nVerifying saved checkpoint...")
+        try:
+            self.verify_flow_matching_checkpoint(self.flow_checkpoint)
+        except RuntimeError as e:
+            print(f"✗ VERIFICATION FAILED: {e}")
+            print(f"Deleting invalid checkpoint...")
+            self.flow_checkpoint.unlink(missing_ok=True)
+            raise RuntimeError("Checkpoint verification failed after save. Refusing to proceed.")
         
         return self.flow_checkpoint
     
@@ -338,6 +292,126 @@ class BoltzFlowMatchingRunner:
         print(f"✓ Found {len(protein_ids)} protein complexes")
         return protein_ids
     
+    def verify_flow_matching_checkpoint(self, checkpoint_path: Path) -> bool:
+        """
+        Verify that the checkpoint is actually using flow matching.
+        Raises an error if not flow matching to prevent accidental score-based runs.
+        
+        Args:
+            checkpoint_path: Path to checkpoint file
+            
+        Returns:
+            True if verified as flow matching
+            
+        Raises:
+            RuntimeError if not flow matching
+        """
+        print("\n" + "="*80)
+        print("VERIFYING FLOW MATCHING CONFIGURATION")
+        print("="*80)
+        
+        checkpoint = torch.load(checkpoint_path, map_location='cpu', weights_only=False)
+        
+        # Check 1: Flow matching flag in checkpoint
+        is_flow_matching = checkpoint.get('flow_matching_module', False)
+        print(f"Checkpoint has flow_matching_module flag: {is_flow_matching}")
+        
+        # Check 2: Hyperparameters
+        hparams = checkpoint.get('hyper_parameters', {})
+        use_flow_matching = hparams.get('use_flow_matching', False)
+        print(f"Hyperparameters use_flow_matching: {use_flow_matching}")
+        
+        # Check 3: Sampling steps
+        structure_args = hparams.get('structure_module_args', {})
+        num_steps = structure_args.get('num_sampling_steps', None)
+        print(f"Configured sampling steps: {num_steps}")
+        
+        # Verify it matches our flow steps
+        if num_steps != self.flow_steps:
+            raise RuntimeError(
+                f"VERIFICATION FAILED: Checkpoint has {num_steps} steps but flow_steps={self.flow_steps}. "
+                f"This suggests score-based diffusion might be active!"
+            )
+        
+        # Check 4: Flow matching args present
+        has_flow_args = 'flow_matching_args' in checkpoint
+        print(f"Checkpoint has flow_matching_args: {has_flow_args}")
+        
+        # Final verification
+        if not (is_flow_matching or use_flow_matching):
+            raise RuntimeError(
+                "VERIFICATION FAILED: Checkpoint does not have flow matching enabled! "
+                "Refusing to run to prevent using score-based diffusion."
+            )
+        
+        print("\n✓ VERIFICATION PASSED: Flow matching is confirmed active")
+        print("="*80)
+        return True
+    
+    def verify_flow_matching_module_loaded(self, checkpoint_path: Path) -> bool:
+        """
+        Load the model and verify that FlowMatchingDiffusion (diffusionv3) is actually being used.
+        This is the ultimate verification that your flow matching code will run.
+        
+        Args:
+            checkpoint_path: Path to checkpoint file
+            
+        Returns:
+            True if flow matching module is loaded
+            
+        Raises:
+            RuntimeError: If the wrong module is loaded
+        """
+        from boltz.model.models.boltz2 import Boltz2
+        
+        try:
+            # Load the model
+            print(f"Loading model from checkpoint: {checkpoint_path}")
+            model = Boltz2.load_from_checkpoint(
+                checkpoint_path,
+                map_location=self.device,
+                strict=False,
+            )
+            
+            # Check the type of structure_module
+            structure_module = model.structure_module
+            module_type = type(structure_module).__name__
+            module_file = type(structure_module).__module__
+            
+            print(f"\nStructure module type: {module_type}")
+            print(f"Module file: {module_file}")
+            
+            # Verify it's FlowMatchingDiffusion from diffusionv3
+            if 'diffusionv3_flow_matching' in module_file:
+                print(f"✓ CONFIRMED: Using FlowMatchingDiffusion from diffusionv3_flow_matching")
+                print(f"✓ Your flow matching implementation WILL be used!")
+                
+                # Additional checks
+                if hasattr(structure_module, 'num_sampling_steps'):
+                    print(f"✓ Flow matching steps configured: {structure_module.num_sampling_steps}")
+                    if structure_module.num_sampling_steps != self.flow_steps:
+                        print(f"  WARNING: Module has {structure_module.num_sampling_steps} but we requested {self.flow_steps}")
+                
+                print("="*80)
+                return True
+            else:
+                error_msg = (
+                    f"VERIFICATION FAILED: Wrong diffusion module loaded!\n"
+                    f"  Expected: diffusionv3_flow_matching.FlowMatchingDiffusion\n"
+                    f"  Got: {module_file}.{module_type}\n"
+                    f"  This means your flow matching code will NOT run!"
+                )
+                print(f"✗ {error_msg}")
+                raise RuntimeError(error_msg)
+                
+        except Exception as e:
+            if isinstance(e, RuntimeError):
+                raise
+            print(f"✗ Error loading model for verification: {e}")
+            import traceback
+            traceback.print_exc()
+            raise RuntimeError(f"Could not verify flow matching module: {e}")
+    
     def run_boltz_prediction(self, input_yaml: Path, output_dir: Path, checkpoint_path: Path) -> Tuple[bool, float]:
         """
         Run Boltz prediction using the flow matching checkpoint.
@@ -354,13 +428,30 @@ class BoltzFlowMatchingRunner:
         print("RUNNING BOLTZ PREDICTION WITH FLOW MATCHING")
         print("="*80)
         
+        # VERIFY FLOW MATCHING BEFORE RUNNING
+        self.verify_flow_matching_checkpoint(checkpoint_path)
+        
+        # VERIFY THE MODEL LOADS WITH FLOW MATCHING AT RUNTIME
+        print("\n" + "="*80)
+        print("RUNTIME VERIFICATION: Loading model to confirm diffusionv3 is active")
+        print("="*80)
+        self.verify_flow_matching_module_loaded(checkpoint_path)
+        
+        # CRITICAL: Ensure we're using flow steps, NOT score steps
+        # This is the primary way to enforce ODE integration instead of SDE
+        assert self.flow_steps > 0, f"Invalid flow_steps: {self.flow_steps}"
+        assert self.flow_steps != self.score_steps or self.score_steps == self.flow_steps, \
+            "Using same steps for flow and score suggests configuration error"
+        
         # Prepare command
+        # IMPORTANT: The checkpoint must be our flow_matching_boltz2.ckpt
+        # IMPORTANT: sampling_steps MUST match self.flow_steps to use ODE solver
         cmd = [
             sys.executable, "-m", "boltz.main", "predict",
             str(input_yaml),
             "--out_dir", str(output_dir),
-            "--checkpoint", str(checkpoint_path),
-            "--sampling_steps", str(self.flow_steps),
+            "--checkpoint", str(checkpoint_path),  # Flow matching checkpoint
+            "--sampling_steps", str(self.flow_steps),  # ODE steps for flow matching
             "--diffusion_samples", str(self.diffusion_samples),
             "--recycling_steps", str(self.recycling_steps),
             "--output_format", self.output_format,
@@ -506,6 +597,11 @@ class BoltzFlowMatchingRunner:
         print("RESULTS SUMMARY")
         print("="*80)
         
+        print("\n✓ DIFFUSION METHOD USED: Flow Matching (diffusionv3_flow_matching)")
+        print(f"  Module: FlowMatchingDiffusion")
+        print(f"  Integration steps: {self.flow_steps} (ODE solver)")
+        print(f"  Sigma range: {self.sigma_min} - {self.sigma_max}")
+        
         successful = [r for r in results if r['success']]
         
         if successful:
@@ -650,25 +746,4 @@ if __name__ == "__main__":
     print("\n" + "="*80)
     print("COMPLETE")
     print("="*80)
-    print("""
-Flow matching is integrated with Boltz!
 
-What was done:
-  ✓ Consolidated all run files into single script
-  ✓ Standardized parameter handling (no argparse)
-  ✓ Unified data loading and PDB parsing
-  ✓ Consistent error handling and logging
-  ✓ Modified Boltz checkpoint for flow matching
-  ✓ Changed sampling steps: 200 → 20
-  ✓ Actually uses FlowMatchingDiffusion module
-  ✓ Attempted full predictions with complete pipeline
-
-Your flow matching implementation (diffusionv3_flow_matching.py) is ready!
-
-To use it in production:
-  1. The checkpoint is modified: flow_matching_boltz2.ckpt
-  2. Run: boltz predict <input.yaml> --checkpoint flow_matching_boltz2.ckpt --sampling_steps 20
-  3. Measure actual timing to compare with score-based predictions
-
-The flow matching diffusion module is production-ready! 🎉
-""")

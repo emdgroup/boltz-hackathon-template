@@ -197,6 +197,7 @@ class AtomDiffusion(Module):
         compile_score: bool = False,
         alignment_reverse_diff: bool = False,
         synchronize_sigmas: bool = False,
+        **kwargs,
     ):
         super().__init__()
         self.score_model = DiffusionModule(

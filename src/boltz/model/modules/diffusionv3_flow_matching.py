@@ -37,6 +37,74 @@ from boltz.model.modules.utils import (
 from boltz.model.potentials.potentials import get_potentials
 
 
+class ScoreToVelocityConverter:
+    """
+    Analytically convert score-based diffusion predictions to flow matching velocities.
+    Integrated directly into the FlowMatchingDiffusion module.
+    """
+    
+    def __init__(
+        self,
+        sigma_min=0.0004,
+        sigma_max=160.0,
+        sigma_data=16.0,
+        conversion_method='noise_based',
+    ):
+        self.sigma_min = sigma_min
+        self.sigma_max = sigma_max
+        self.sigma_data = sigma_data
+        self.conversion_method = conversion_method
+        
+        print(f"Score-to-velocity converter initialized: {conversion_method} method")
+    
+    def sigma_to_t(self, sigma):
+        """Convert noise level σ to flow time t ∈ [0,1]."""
+        if isinstance(sigma, (int, float)):
+            sigma = torch.tensor(sigma)
+        
+        log_sigma = torch.log(sigma)
+        log_sigma_min = torch.log(torch.tensor(self.sigma_min, device=sigma.device))
+        log_sigma_max = torch.log(torch.tensor(self.sigma_max, device=sigma.device))
+        
+        t = (log_sigma - log_sigma_min) / (log_sigma_max - log_sigma_min)
+        return torch.clamp(t, 0.0, 1.0)
+    
+    def t_to_sigma(self, t):
+        """Convert flow time t to noise level σ."""
+        if isinstance(t, (int, float)):
+            t = torch.tensor(t)
+        
+        log_sigma_min = torch.log(torch.tensor(self.sigma_min, device=t.device))
+        log_sigma_max = torch.log(torch.tensor(self.sigma_max, device=t.device))
+        
+        log_sigma = log_sigma_min + t * (log_sigma_max - log_sigma_min)
+        return torch.exp(log_sigma)
+    
+    def convert_score_to_velocity(self, x_t, denoised_coords, sigma):
+        """
+        Convert score model output to velocity field using noise-based method.
+        
+        Key insight: Both score and flow models parameterize the same noise ε!
+        Score model: x_t = x_0 + σ*ε  →  ε = (x_t - x_0)/σ
+        Flow model:  x_t = (1-t)*x_0 + t*ε  →  v = ε - x_0
+        """
+        # Handle sigma dimensions
+        if isinstance(sigma, (int, float)):
+            sigma_expanded = sigma
+        elif sigma.dim() == 1:
+            sigma_expanded = sigma.reshape(-1, 1, 1)
+        else:
+            sigma_expanded = sigma
+        
+        # Estimate noise: ε = (x_t - x_0)/σ
+        epsilon = (x_t - denoised_coords) / (sigma_expanded + 1e-8)
+        
+        # Flow matching velocity: v = ε - x_0
+        velocity = epsilon - denoised_coords
+        
+        return velocity
+
+
 class DiffusionModule(Module):
     """Diffusion module"""
 
@@ -199,6 +267,8 @@ class AtomDiffusion(Module):
         compile_score: bool = False,
         alignment_reverse_diff: bool = False,
         synchronize_sigmas: bool = False,
+        conversion_method: str = 'noise_based',  # Method for score-to-velocity conversion
+        **kwargs  # Accept any additional parameters for compatibility
     ):
         super().__init__()
         self.score_model = DiffusionModule(
@@ -233,26 +303,53 @@ class AtomDiffusion(Module):
 
         self.token_s = score_model_args["token_s"]
         self.register_buffer("zero", torch.tensor(0.0), persistent=False)
+        
+        # Initialize score-to-velocity converter
+        self.converter = ScoreToVelocityConverter(
+            sigma_min=sigma_min,
+            sigma_max=sigma_max,
+            sigma_data=sigma_data,
+            conversion_method=conversion_method,
+        )
 
     @property
     def device(self):
         return next(self.score_model.parameters()).device
 
+    # Score model preconditioning functions (needed for analytical conversion)
+    def c_skip(self, sigma):
+        return (self.sigma_data**2) / (sigma**2 + self.sigma_data**2)
+
+    def c_out(self, sigma):
+        return sigma * self.sigma_data / torch.sqrt(self.sigma_data**2 + sigma**2)
+
+    def c_in(self, sigma):
+        return 1 / torch.sqrt(sigma**2 + self.sigma_data**2)
+
+    def c_noise(self, sigma):
+        return log(sigma / self.sigma_data) * 0.25
+
+    def preconditioned_network_forward(self, noised_atom_coords, sigma, network_condition_kwargs):
+        """Get denoised coordinates from the pre-trained score model."""
+        batch, device = noised_atom_coords.shape[0], noised_atom_coords.device
+
+        if isinstance(sigma, float):
+            sigma = torch.full((batch,), sigma, device=device)
+
+        padded_sigma = rearrange(sigma, "b -> b 1 1")
+
+        r_update = self.score_model(
+            r_noisy=self.c_in(padded_sigma) * noised_atom_coords,
+            times=self.c_noise(sigma),
+            **network_condition_kwargs,
+        )
+        denoised_coords = (
+            self.c_skip(padded_sigma) * noised_atom_coords
+            + self.c_out(padded_sigma) * r_update
+        )
+        return denoised_coords
 
     # old code from diffusionv2.py now going to use flow matching instead
-        #def c_skip(self, sigma):
-        #    return (self.sigma_data**2) / (sigma**2 + self.sigma_data**2)
-
-        #def c_out(self, sigma):
-        #    return sigma * self.sigma_data / torch.sqrt(self.sigma_data**2 + sigma**2)
-
-        #def c_in(self, sigma):
-        #    return 1 / torch.sqrt(sigma**2 + self.sigma_data**2)
-
-        #def c_noise(self, sigma):
-        #    return log(sigma / self.sigma_data) * 0.25
-
-    # new code for flow matching
     def compute_flow_path(self, x0, xi, t):
         """
         Compute interpolated position along flow path.
@@ -282,60 +379,44 @@ class AtomDiffusion(Module):
         return xi - x0
 
 
-
-    # old code from diffusionv2.py now going to use flow matching instead
-        # def preconditioned_network_forward(
-        #    self,
-        #    noised_atom_coords,  #: Float['b m 3'],
-        #    sigma,  #: Float['b'] | Float[' '] | float,
-        #    network_condition_kwargs: dict,
-        #):
-        #    batch, device = noised_atom_coords.shape[0], noised_atom_coords.device
-
-        #    if isinstance(sigma, float):
-        #        sigma = torch.full((batch,), sigma, device=device)
-
-        #    padded_sigma = rearrange(sigma, "b -> b 1 1")
-
-        #    r_update = self.score_model(
-        #        r_noisy=self.c_in(padded_sigma) * noised_atom_coords,
-        #        times=self.c_noise(sigma),
-        #        **network_condition_kwargs,
-        #    )
-        #    denoised_coords = (
-        #        self.c_skip(padded_sigma) * noised_atom_coords
-        #        + self.c_out(padded_sigma) * r_update
-        #    )
-        #    return denoised_coords
-
     # new code for flow matching
     def velocity_network_forward(self, atom_coords_t, t, network_condition_kwargs):
         """
-        Predict velocity at position x_t and time t.
-    
-        atom_coords_t: coordinates at time t [b, m, 3]
-        t: flow time in [0,1], [b] or [b,1,1]
+        Predict velocity using the probability flow ODE from the pre-trained score model.
         
-        Returns: predicted velocity v_theta(x_t, t) [b, m, 3]
+        This uses the correct EDM probability flow ODE velocity instead of trying 
+        to convert to a different flow path.
         """
         batch, device = atom_coords_t.shape[0], atom_coords_t.device
         
         if isinstance(t, float):
             t = torch.full((batch,), t, device=device)
         
-        # Ensure t is 1D [b] for the single_conditioner
         if t.dim() > 1:
             t = t.squeeze()
         
-        # No preconditioning needed! Just pass time directly
-        # The network learns the velocity field end-to-end
-        predicted_velocity = self.score_model(
-            r_noisy=atom_coords_t,
-            times=t,  # pass t as 1D tensor [b]
-            **network_condition_kwargs,
+        # Convert flow time t ∈ [0,1] to noise level sigma
+        # t=0 → high noise (sigma_max), t=1 → low noise (sigma_min) 
+        sigma = self.sigma_max * (1 - t) + self.sigma_min * t
+        
+        # Get the score model's denoised prediction
+        denoised_coords = self.preconditioned_network_forward(
+            atom_coords_t, sigma, network_condition_kwargs
         )
         
-        return predicted_velocity
+        # Use the EDM probability flow ODE velocity:
+        # v = (x_0_pred - x_t) / sigma
+        # This is the correct velocity for the probability flow ODE
+        if isinstance(sigma, float):
+            sigma_expanded = sigma
+        elif sigma.dim() == 1:
+            sigma_expanded = sigma.reshape(-1, 1, 1)
+        else:
+            sigma_expanded = sigma
+        
+        velocity = (denoised_coords - atom_coords_t) / (sigma_expanded + 1e-8)
+        
+        return velocity
 
 
     def sample_schedule(self, num_sampling_steps=None):

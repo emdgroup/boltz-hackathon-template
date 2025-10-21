@@ -23,6 +23,15 @@ from boltz.model.modules.affinity import AffinityModule
 from boltz.model.modules.confidencev2 import ConfidenceModule
 from boltz.model.modules.diffusion_conditioning import DiffusionConditioning
 from boltz.model.modules.diffusionv2 import AtomDiffusion
+
+# Conditional import for flow matching
+try:
+    from boltz.model.modules.diffusionv3_flow_matching import AtomDiffusion as FlowMatchingDiffusion
+    FLOW_MATCHING_AVAILABLE = True
+except ImportError:
+    FLOW_MATCHING_AVAILABLE = False
+    FlowMatchingDiffusion = None
+
 from boltz.model.modules.encodersv2 import RelativePositionEncoder
 from boltz.model.modules.trunkv2 import (
     BFactorModule,
@@ -53,8 +62,9 @@ class Boltz2(LightningModule):
         msa_args: dict[str, Any],
         pairformer_args: dict[str, Any],
         score_model_args: dict[str, Any],
-        diffusion_process_args: dict[str, Any],
         diffusion_loss_args: dict[str, Any],
+        structure_module_args: Optional[dict[str, Any]] = None, # New name
+        diffusion_process_args: Optional[dict[str, Any]] = None, # Legacy name
         confidence_model_args: Optional[dict[str, Any]] = None,
         affinity_model_args: Optional[dict[str, Any]] = None,
         affinity_model_args1: Optional[dict[str, Any]] = None,
@@ -104,9 +114,23 @@ class Boltz2(LightningModule):
         checkpoint_diffusion_conditioning: bool = False,
         use_templates_v2: bool = False,
         use_kernels: bool = False,
+        use_flow_matching: bool = False,
+        flow_conversion_method: str = 'noise_based',
     ) -> None:
         super().__init__()
-        self.save_hyperparameters(ignore=["validators"])
+        
+        # Backwards compatibility for checkpoints trained with diffusion_process_args
+        if structure_module_args is None:
+            structure_module_args = diffusion_process_args
+        
+        if structure_module_args is None:
+            structure_module_args = {}
+
+        self.save_hyperparameters(ignore=["validators", "diffusion_process_args"])
+
+        # After saving, make sure structure_module_args is correctly stored if it came from diffusion_process_args
+        if 'structure_module_args' not in self.hparams or self.hparams.structure_module_args is None:
+            self.hparams.structure_module_args = structure_module_args
 
         # No random recycling
         self.no_random_recycling_training = no_random_recycling_training
@@ -272,17 +296,35 @@ class Boltz2(LightningModule):
         )
 
         # Output modules
-        self.structure_module = AtomDiffusion(
-            score_model_args={
-                "token_s": token_s,
-                "atom_s": atom_s,
-                "atoms_per_window_queries": atoms_per_window_queries,
-                "atoms_per_window_keys": atoms_per_window_keys,
-                **score_model_args,
-            },
-            compile_score=compile_structure,
-            **diffusion_process_args,
-        )
+        # Choose between FlowMatchingDiffusion and standard AtomDiffusion
+        if use_flow_matching and FLOW_MATCHING_AVAILABLE:
+            print("Using FlowMatchingDiffusion module")
+            self.structure_module = FlowMatchingDiffusion(
+                score_model_args={
+                    "token_s": token_s,
+                    "atom_s": atom_s,
+                    "atoms_per_window_queries": atoms_per_window_queries,
+                    "atoms_per_window_keys": atoms_per_window_keys,
+                    **score_model_args,
+                },
+                compile_score=compile_structure,
+                conversion_method=flow_conversion_method,
+                **structure_module_args,
+            )
+        else:
+            if use_flow_matching and not FLOW_MATCHING_AVAILABLE:
+                print("WARNING: Flow matching requested but module not available, using standard AtomDiffusion")
+            self.structure_module = AtomDiffusion(
+                score_model_args={
+                    "token_s": token_s,
+                    "atom_s": atom_s,
+                    "atoms_per_window_queries": atoms_per_window_queries,
+                    "atoms_per_window_keys": atoms_per_window_keys,
+                    **score_model_args,
+                },
+                compile_score=compile_structure,
+                **structure_module_args,
+            )
         self.distogram_module = DistogramModule(
             token_z,
             num_bins,
