@@ -232,6 +232,7 @@ class BoltzInferenceDataModule(pl.LightningDataModule):
         target_dir: Path,
         msa_dir: Path,
         num_workers: int,
+        inference_batch_size: int,
         constraints_dir: Optional[Path] = None,
     ) -> None:
         """Initialize the DataModule.
@@ -248,6 +249,8 @@ class BoltzInferenceDataModule(pl.LightningDataModule):
         self.target_dir = target_dir
         self.msa_dir = msa_dir
         self.constraints_dir = constraints_dir
+        self.inference_batch_size = inference_batch_size
+
 
     def predict_dataloader(self) -> DataLoader:
         """Get the training dataloader.
@@ -266,7 +269,7 @@ class BoltzInferenceDataModule(pl.LightningDataModule):
         )
         return DataLoader(
             dataset,
-            batch_size=1,
+            batch_size=self.inference_batch_size,
             num_workers=self.num_workers,
             pin_memory=True,
             shuffle=False,

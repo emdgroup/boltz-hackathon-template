@@ -324,6 +324,7 @@ class Boltz2InferenceDataModule(pl.LightningDataModule):
         msa_dir: Path,
         mol_dir: Path,
         num_workers: int,
+        inference_batch_size: int,
         constraints_dir: Optional[Path] = None,
         template_dir: Optional[Path] = None,
         extra_mols_dir: Optional[Path] = None,
@@ -365,6 +366,7 @@ class Boltz2InferenceDataModule(pl.LightningDataModule):
         self.extra_mols_dir = extra_mols_dir
         self.override_method = override_method
         self.affinity = affinity
+        self.inference_batch_size = inference_batch_size
 
     def predict_dataloader(self) -> DataLoader:
         """Get the training dataloader.
@@ -386,9 +388,10 @@ class Boltz2InferenceDataModule(pl.LightningDataModule):
             override_method=self.override_method,
             affinity=self.affinity,
         )
+        print(f'In Boltz2Model {self.inference_batch_size = }')
         return DataLoader(
             dataset,
-            batch_size=1,
+            batch_size=self.inference_batch_size,
             num_workers=self.num_workers,
             pin_memory=True,
             shuffle=False,

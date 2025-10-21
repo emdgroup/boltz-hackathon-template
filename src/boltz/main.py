@@ -5,6 +5,7 @@ import platform
 import tarfile
 import urllib.request
 import warnings
+import numpy as np
 from dataclasses import asdict, dataclass
 from functools import partial
 from multiprocessing import Pool
@@ -522,7 +523,7 @@ def compute_msa(
             f.write("\n".join(csv_str))
 
 
-def process_input(  # noqa: C901, PLR0912, PLR0915, D103
+def process_single_input(  # noqa: C901, PLR0912, PLR0915, D103
     path: Path,
     ccd: dict,
     msa_dir: Path,
@@ -662,7 +663,7 @@ def process_input(  # noqa: C901, PLR0912, PLR0915, D103
 
 
 @rank_zero_only
-def process_inputs(
+def process_multiple_inputs(
     data: list[Path],
     out_dir: Path,
     ccd_path: Path,
@@ -770,7 +771,7 @@ def process_inputs(
 
     # Create partial function
     process_input_partial = partial(
-        process_input,
+        process_single_input,
         ccd=ccd,
         msa_dir=msa_dir,
         mol_dir=mol_dir,
@@ -807,6 +808,33 @@ def process_inputs(
     manifest = Manifest(records)
     manifest.dump(out_dir / "processed" / "manifest.json")
 
+def _estimate_record_cost(record: Record, processed_dir: Path) -> float:
+    """
+    Approximate cost ~ L^2 * chain_factor
+    L: total residues across valid chains
+    chain_factor: 1 + 0.05*(num_chains-1)
+    """
+    struct_path_v2 = processed_dir / "structures" / f"{record.id}.npz"
+    L_total = 0
+    try:
+        arr = np.load(struct_path_v2)
+        # Try residues array first
+        if "residues" in arr:
+            L_total = len(arr["residues"])
+        else:
+            # Fallback: count by chains (rough)
+            L_total = sum(len(c.sequence) if hasattr(c, "sequence") and c.sequence else 0 for c in record.chains)
+    except Exception:
+        # Fallback using record chains only
+        L_total = sum(
+            len(getattr(c, "sequence", "")) if getattr(c, "sequence", "") else 0
+            for c in record.chains
+        )
+    if L_total <= 0:
+        L_total = 1
+    num_chains = max(1, len(record.chains))
+    chain_factor = 1.0 + 0.05 * (num_chains - 1)
+    return (L_total * L_total) * chain_factor
 
 @click.group()
 def cli() -> None:
@@ -1039,6 +1067,24 @@ def cli() -> None:
     is_flag=True,
     help=" to dump the s and z embeddings into a npz file. Default is False.",
 )
+@click.option(
+    "--inference_batch_size",
+    is_flag=True,
+    type=int,
+    default=1,
+    help="Set custom batch size in DataLoaders downstream.",
+)
+@click.option(
+    "--auto_batch",
+    is_flag=True,
+    help="Automatically choose inference batch size based on approximate sequence costs.",
+)
+@click.option(
+    "--batch_cost_ceiling",
+    type=float,
+    default=15000000.0,
+    help="Approximate total cost ceiling per batch when --auto_batch is used (cost ~ L^2).",
+)
 def predict(  # noqa: C901, PLR0915, PLR0912
     data: str,
     out_dir: str,
@@ -1077,7 +1123,12 @@ def predict(  # noqa: C901, PLR0915, PLR0912
     num_subsampled_msa: int = 1024,
     no_kernels: bool = False,
     write_embeddings: bool = False,
+    inference_batch_size: int = 100,
+    auto_batch: bool = True,
+    batch_cost_ceiling: float = 15000000.0,
 ) -> None:
+    # (existing code above unchanged) ...
+        
     """Run predictions with Boltz."""
     # If cpu, write a friendly warning
     if accelerator == "cpu":
@@ -1088,6 +1139,10 @@ def predict(  # noqa: C901, PLR0915, PLR0912
     warnings.filterwarnings(
         "ignore", ".*that has Tensor Cores. To properly utilize them.*"
     )
+
+    if inference_batch_size < 1:
+        click.echo("Received inference_batch_size < 1; resetting to 1.")
+        inference_batch_size = 10000
 
     # Set no grad
     torch.set_grad_enabled(False)
@@ -1159,7 +1214,7 @@ def predict(  # noqa: C901, PLR0915, PLR0912
     # Process inputs
     ccd_path = cache / "ccd.pkl"
     mol_dir = cache / "mols"
-    process_inputs(
+    process_multiple_inputs(
         data=data,
         out_dir=out_dir,
         ccd_path=ccd_path,
@@ -1186,6 +1241,26 @@ def predict(  # noqa: C901, PLR0915, PLR0912
         override=override,
     )
 
+    if auto_batch and filtered_manifest.records:
+        processed_dir = out_dir / "processed"
+        costs = [_estimate_record_cost(r, processed_dir) for r in filtered_manifest.records]
+        avg_cost = float(np.mean(costs))
+        candidate = int(batch_cost_ceiling // max(avg_cost, 1.0))
+        print(f'{candidate = }')
+        # If user manually set inference_batch_size > 1, respect manual unless candidate smaller (OOM guard)
+        if inference_batch_size == 1 or candidate < inference_batch_size:
+            inference_batch_size = 100
+            print(f'{candidate = }')
+            print(f'{inference_batch_size = }')
+        click.echo(
+            f"[auto_batch] avg_cost={avg_cost:.1f}, cost_ceiling={batch_cost_ceiling:.1f} -> "
+            f"inference_batch_size={inference_batch_size}"
+        )
+    elif auto_batch and not filtered_manifest.records:
+        click.echo("[auto_batch] No records to batch; skipping.")
+
+    print(f'{inference_batch_size = }')
+    inference_batch_size = 100
     # Load processed data
     processed_dir = out_dir / "processed"
     processed = BoltzProcessedInput(
@@ -1279,6 +1354,7 @@ def predict(  # noqa: C901, PLR0915, PLR0912
                 template_dir=processed.template_dir,
                 extra_mols_dir=processed.extra_mols_dir,
                 override_method=method,
+                inference_batch_size=inference_batch_size
             )
         else:
             data_module = BoltzInferenceDataModule(
@@ -1287,6 +1363,7 @@ def predict(  # noqa: C901, PLR0915, PLR0912
                 msa_dir=processed.msa_dir,
                 num_workers=num_workers,
                 constraints_dir=processed.constraints_dir,
+                inference_batch_size=inference_batch_size
             )
 
         # Load model
@@ -1367,6 +1444,7 @@ def predict(  # noqa: C901, PLR0915, PLR0912
             extra_mols_dir=processed.extra_mols_dir,
             override_method="other",
             affinity=True,
+            inference_batch_size=inference_batch_size
         )
 
         predict_affinity_args = {
