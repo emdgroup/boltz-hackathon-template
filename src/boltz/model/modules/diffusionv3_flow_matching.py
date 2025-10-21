@@ -323,11 +323,15 @@ class AtomDiffusion(Module):
         if isinstance(t, float):
             t = torch.full((batch,), t, device=device)
         
+        # Ensure t is 1D [b] for the single_conditioner
+        if t.dim() > 1:
+            t = t.squeeze()
+        
         # No preconditioning needed! Just pass time directly
         # The network learns the velocity field end-to-end
         predicted_velocity = self.score_model(
             r_noisy=atom_coords_t,
-            times=t.reshape(-1, 1, 1) if t.dim() == 1 else t,  # pass t directly
+            times=t,  # pass t as 1D tensor [b]
             **network_condition_kwargs,
         )
         
@@ -377,16 +381,22 @@ class AtomDiffusion(Module):
         # Time discretization: t=1 -> t=0
         t_schedule = torch.linspace(1.0, 0.0, num_sampling_steps + 1, device=self.device)
         
+        batch_size = x.shape[0]
+        
         for i in range(num_sampling_steps):
             t_curr = t_schedule[i]
             t_next = t_schedule[i + 1]
             dt = t_next - t_curr  # negative (moving backward in time)
             
+            # Convert scalar times to batch tensors
+            t_curr_batch = torch.full((batch_size,), t_curr.item(), device=self.device)
+            t_next_batch = torch.full((batch_size,), t_next.item(), device=self.device)
+            
             # Heun's method (RK2)
             # First evaluation
             with torch.no_grad():
                 v1 = self.velocity_network_forward(
-                    x, t_curr, network_condition_kwargs
+                    x, t_curr_batch, network_condition_kwargs
                 )
             
             # Euler step
@@ -395,7 +405,7 @@ class AtomDiffusion(Module):
             # Second evaluation
             with torch.no_grad():
                 v2 = self.velocity_network_forward(
-                    x_euler, t_next, network_condition_kwargs
+                    x_euler, t_next_batch, network_condition_kwargs
                 )
             
             # Heun update (average of two velocities)

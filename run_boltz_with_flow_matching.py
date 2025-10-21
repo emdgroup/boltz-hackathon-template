@@ -49,7 +49,7 @@ def prepare_boltz_input(datapoint_id, pdb_file):
         seq = ''.join([res[0] for res in chain_sequences[chain_id]])
         sequences.append({
             'protein': {
-                'id': f'{datapoint_id}_{chain_id}',
+                'id': chain_id,
                 'sequence': seq,
             }
         })
