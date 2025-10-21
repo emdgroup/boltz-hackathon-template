@@ -5,6 +5,7 @@ import platform
 import tarfile
 import urllib.request
 import warnings
+import numpy as np
 from dataclasses import asdict, dataclass
 from functools import partial
 from multiprocessing import Pool
@@ -807,6 +808,33 @@ def process_multiple_inputs(
     manifest = Manifest(records)
     manifest.dump(out_dir / "processed" / "manifest.json")
 
+def _estimate_record_cost(record: Record, processed_dir: Path) -> float:
+    """
+    Approximate cost ~ L^2 * chain_factor
+    L: total residues across valid chains
+    chain_factor: 1 + 0.05*(num_chains-1)
+    """
+    struct_path_v2 = processed_dir / "structures" / f"{record.id}.npz"
+    L_total = 0
+    try:
+        arr = np.load(struct_path_v2)
+        # Try residues array first
+        if "residues" in arr:
+            L_total = len(arr["residues"])
+        else:
+            # Fallback: count by chains (rough)
+            L_total = sum(len(c.sequence) if hasattr(c, "sequence") and c.sequence else 0 for c in record.chains)
+    except Exception:
+        # Fallback using record chains only
+        L_total = sum(
+            len(getattr(c, "sequence", "")) if getattr(c, "sequence", "") else 0
+            for c in record.chains
+        )
+    if L_total <= 0:
+        L_total = 1
+    num_chains = max(1, len(record.chains))
+    chain_factor = 1.0 + 0.05 * (num_chains - 1)
+    return (L_total * L_total) * chain_factor
 
 @click.group()
 def cli() -> None:
@@ -1046,6 +1074,17 @@ def cli() -> None:
     default=1,
     help="Set custom batch size in DataLoaders downstream.",
 )
+@click.option(
+    "--auto_batch",
+    is_flag=True,
+    help="Automatically choose inference batch size based on approximate sequence costs.",
+)
+@click.option(
+    "--batch_cost_ceiling",
+    type=float,
+    default=15000000.0,
+    help="Approximate total cost ceiling per batch when --auto_batch is used (cost ~ L^2).",
+)
 def predict(  # noqa: C901, PLR0915, PLR0912
     data: str,
     out_dir: str,
@@ -1084,8 +1123,12 @@ def predict(  # noqa: C901, PLR0915, PLR0912
     num_subsampled_msa: int = 1024,
     no_kernels: bool = False,
     write_embeddings: bool = False,
-    inference_batch_size: int = 2,
+    inference_batch_size: int = 0,
+    auto_batch: bool = True,
+    batch_cost_ceiling: float = 15000000.0,
 ) -> None:
+    # (existing code above unchanged) ...
+        
     """Run predictions with Boltz."""
     # If cpu, write a friendly warning
     if accelerator == "cpu":
@@ -1197,6 +1240,24 @@ def predict(  # noqa: C901, PLR0915, PLR0912
         outdir=out_dir,
         override=override,
     )
+
+    if auto_batch and filtered_manifest.records:
+        processed_dir = out_dir / "processed"
+        costs = [_estimate_record_cost(r, processed_dir) for r in filtered_manifest.records]
+        avg_cost = float(np.mean(costs))
+        candidate = int(batch_cost_ceiling // max(avg_cost, 1.0))
+        print(f'{candidate = }')
+        # If user manually set inference_batch_size > 1, respect manual unless candidate smaller (OOM guard)
+        if inference_batch_size == 1 or candidate < inference_batch_size:
+            inference_batch_size = candidate
+            print(f'{candidate = }')
+            print(f'{inference_batch_size = }')
+        click.echo(
+            f"[auto_batch] avg_cost={avg_cost:.1f}, cost_ceiling={batch_cost_ceiling:.1f} -> "
+            f"inference_batch_size={inference_batch_size}"
+        )
+    elif auto_batch and not filtered_manifest.records:
+        click.echo("[auto_batch] No records to batch; skipping.")
 
     # Load processed data
     processed_dir = out_dir / "processed"
